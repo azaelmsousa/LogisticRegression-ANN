@@ -1,6 +1,6 @@
 import math
 import os
-import sys 
+import sys
 sys.path.append("../")
 import time
 import timeit
@@ -11,14 +11,14 @@ import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 from numpy.core.umath_tests import inner1d
 from pandas.api.types import CategoricalDtype
 from sklearn import ensemble, linear_model, metrics, model_selection
-from sklearn.datasets import load_breast_cancer, make_regression
+from sklearn.datasets import load_breast_cancer, make_regression, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
 from utils import custom_scores
 
 
-
+__RANDOM_STATE = 42
 __iteration_log = []
 
 
@@ -26,7 +26,8 @@ def get_iteration_log():
     global __iteration_log
     cols = len(__iteration_log[0])
     print(cols)
-    df = pd.DataFrame(__iteration_log, columns=['it', 'b_it', 'epoch', 'acc_train', 'eta', 'acc_val'][:cols])
+    df = pd.DataFrame(__iteration_log, columns=[
+                      'it', 'b_it', 'epoch', 'acc_train', 'eta', 'acc_val'][:cols])
     df.set_index(df.it)
     return df
 
@@ -89,72 +90,79 @@ def get_batch_test():
        F(x) = ----------------, if x >= 0
                 1 + exp^(-x) 
 '''
-def hypothesis(theta,X,stable=False):
-    
-    dot = np.dot(X,theta)
-    
-    #Regular Sigmoid Function        
-    if (stable == False):        
+
+
+def hypothesis(theta, X, stable=False):
+    """
+        Given Theta value and the X set it returns the logistic value for its instances.
+    """
+    dot = np.dot(X, theta)
+
+    # Regular Sigmoid Function
+    if (stable == False):
         h = 1 / (1 + np.exp(-dot))
-    
+
     else:
-    #Stable Sigmoid Function
+        # Stable Sigmoid Function
         num = (dot >= 0).astype(np.float128)
-        dot[dot >= 0] = -dot[dot >= 0]	
+        dot[dot >= 0] = -dot[dot >= 0]
         exp = np.exp(dot)
-        num = np.multiply(num,exp)
+        num = np.multiply(num, exp)
         h = num / (1 + exp)
-    
+
     return h
 
 
+def classify(theta, X, th=0.5, binary=True):
+    """
+        Given a threshold apply a binary classification of the samples regarding an optimized theta
+    """
 
-# Given a threshold apply a 
-# binary classification of the samples
-# regarding an optimized theta
-def classify(theta, X, th=0.5):
-
-    if theta.shape[0] > X.shape[1]:
-        X = np.insert(X, 0, 1, axis=1)
-    y = hypothesis(theta, X)
-    y[y >= th] = 1
-    y[y < th] = 0
-    X = np.delete(X, 0, axis=1)
+    if binary:
+        if theta.shape[0] > X.shape[1]:
+            X = np.insert(X, 0, 1, axis=1)
+        y = hypothesis(theta, X)
+        y[y >= th] = 1
+        y[y < th] = 0
+        X = np.delete(X, 0, axis=1)
+    else:
+        y = classify_multiclass(theta, X)
     return y
 
 
-# Apply a multi class classification of the samples
-# regarding an optimized set of thetas
-def classify_multiclass(theta , X):
-	X = np.insert(X,0,1,axis=1)
-	classes = []
-	max_prob = np.array([])
-	for m in theta:			
-		h = hypothesis(theta[m],X)
-		if max_prob.size == 0:
-			max_prob = h
-			classes = [m]*h.shape[0]
-		for i in range(len(h)):
-			if h[i] > max_prob[i]:
-				max_prob[i] = h[i]
-				classes[i] = m
-	X = np.delete(X,0,axis=1)
-	return classes
+def classify_multiclass(theta, X):
+    """
+        Apply a multi class classification of the samples regarding an optimized set of thetas
+    """
+    X = np.insert(X, 0, 1, axis=1)
+
+    # Running the M models for each instance
+    probs = np.array([hypothesis(theta[m], X) for m in theta.keys()])
+    # Inverting the Matrix from (Models, X) to (X, Models)
+    probs = probs.T
+    # Getting the max probability for each x in X
+    labels = probs.argmax(axis=1)
+
+    X = np.delete(X, 0, axis=1)
+    return labels
 
 
 def cross_entropy_loss(h, y):
-    # y.log(h) + (1-log(h) . 1-y)
-    # log probability * inverse of the log probabality 
-	eps = np.finfo(np.float).eps
-	h[h < eps] = eps
-	h[h > 1.-eps] = 1.-eps
-	return np.multiply(np.log(h),y) + np.multiply((np.log(1-h)),(1-y))
+    """
+     y.log(h) + (1-log(h) . 1-y)
+     log probability * inverse of the log probabality
+    """
+    eps = np.finfo(np.float).eps
+    h[h < eps] = eps
+    h[h > 1.-eps] = 1.-eps
+    return np.multiply(np.log(h), y) + np.multiply((np.log(1-h)), (1-y))
+
 
 def grad_logit_step(theta, X, y, alpha, error):
     """
-    Given the current Theta Set it calculates the gradient and new values for it.
+        Given the current Theta Set it calculates the gradient and new values for it.
     """
-    grad = np.dot(X.transpose(),error)/len(y)
+    grad = np.dot(X.transpose(), error)/len(y)
     result = theta - alpha * grad
 
     return result
@@ -166,21 +174,20 @@ def grad_logit_step_test():
     X, y = get_toy_data()
     X = np.insert(X, 0, 1, axis=1)
 
-    print("X values ")
-    print(X)
+    
     alpha = .9
     max_iter = 50
     for i in range(max_iter):
         h0 = hypothesis(theta, X)
         error = (h0 - y)
-        # for j in range(X.shape[1]):
+
         theta_temp = grad_logit_step(theta, X, y, alpha, error)
 
         theta = theta_temp.copy()
         print("Iter %i theta: %s" % (i, theta))
-        y_hat = classify(theta, X)        
-        print("Training Accuracy: %.3f" % custom_scores.accuracy_score(y, y_hat))
-        
+        y_hat = classify(theta, X)
+        print("Training Accuracy: %.3f" %
+              custom_scores.accuracy_score(y, y_hat))
 
     theta = np.array(theta)
     print("Predicted: %s" % (hypothesis(theta, X)))
@@ -193,13 +200,29 @@ def get_toy_data():
     return X, y
 
 
-def get_toy_data_big():
+def get_toy_data_binary():
     """
-        Returns  X_train, X_test, y_train, y_test from Breat Cancer
+        Returns  X_train, X_test, y_train, y_test from Breast Cancer
     """
-    X,y = load_breast_cancer(return_X_y=True)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    X, y = load_breast_cancer(return_X_y=True)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=__RANDOM_STATE)
     return X_train, X_test, y_train, y_test
+
+
+def get_toy_data_multiclass():
+    """
+        Returns  X_train, X_test, y_train, y_test from with 4 classes and 20 features
+    """
+    X, y = make_classification(n_samples=500, n_features=10, n_classes=4,
+                               n_clusters_per_class=1, n_informative=4,
+                               n_redundant=0)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=__RANDOM_STATE)
+
+    return X_train, X_test, y_train, y_test
+
 
 def SGD(lr, max_iter, X, y, lr_optimizer=None,
         power_t=0.25, t=1.0,
@@ -211,7 +234,6 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
 
     # Adding theta0 to the feature vector
     X = np.insert(X, values=1, obj=0, axis=1)
-
     shape = X.shape
     nsamples = shape[0]
     print("Number of samples: "+str(nsamples))
@@ -238,7 +260,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     global __iteration_log
     __iteration_log = []
     acc_val = 0.
-    while ( it < max_iter ):
+    while (it < max_iter):
         if lr_optimizer == 'invscaling':
             eta = lr / (it + 1) * pow(t, power_t)
         else:
@@ -261,8 +283,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         theta_temp = grad_logit_step(theta, X_, y_, eta, error)
 
         y_pred = classify(theta_temp, X_)
-        
-        acc_train = custom_scores.accuracy_score(y_, y_pred)        
+
+        acc_train = custom_scores.accuracy_score(y_, y_pred)
 
         theta = theta_temp.copy()
 
@@ -271,7 +293,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
 
         if X_val is not None:
             y_pred_val = classify(theta, X_val)
-            acc_val = custom_scores.accuracy_score(y_val, y_pred_val)                    
+            acc_val = custom_scores.accuracy_score(y_val, y_pred_val)
 
         if (it % print_interval) == 0 or it == 1:
             if X_val is not None:
@@ -285,10 +307,10 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
             __iteration_log.append((it, b_it, epoch, acc_train, eta, acc_val))
         else:
             __iteration_log.append((it, b_it, epoch, acc_train, eta))
-    
+
     y_pred = classify(theta, X)
-        
-    acc_train = custom_scores.accuracy_score(y, y_pred)        
+
+    acc_train = custom_scores.accuracy_score(y, y_pred)
 
     if X_val is not None:
         print("Finished \n Whole Set Train Acc: %.8f Val Acc: %.8f" %
@@ -301,57 +323,124 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     return theta
 
 
+def SGD_one_vs_all(lr, max_iter, X, y, lr_optimizer=None,
+                   power_t=0.25, t=1.0,
+                   batch_type='Full',
+                   batch_sz=1,
+                   print_interval=100,
+                   X_val=None,
+                   y_val=None):
 
-def SGD_test():    
-    X,  X_val, y, y_val = get_toy_data_big()        
-    print("X values ")
-    print(X)
+    classes = np.unique(y)
+    print(classes)
+    theta = {}
+
+    for c in classes:
+        print("==============================================")
+        print("Training for class {}".format(c))
+        print("==============================================")
+        cy = np.copy(y)
+        cy[y != c] = 0.
+        cy[y == c] = 1.
+
+        cy_val = np.copy(y_val)
+        cy_val[y_val != c] = 0.
+        cy_val[y_val == c] = 1.
+
+        theta[c] = SGD(lr, max_iter, X, cy, lr_optimizer,
+                       power_t, t,
+                       batch_type,
+                       batch_sz,
+                       print_interval,
+                       X_val,
+                       cy_val)
+        print("==============================================")
+
+    return theta
+
+
+def SGD_test_binary():
+    X,  X_val, y, y_val = get_toy_data_binary()
+    
+
     lr = .01
-    max_iter = 10000
-    batch_sz = 100
-    print_interval=100
+    max_iter = 1000
+    batch_sz = 64
+    print_interval = 100
 
     print("")
     print("Full batch")
 
     start = time.process_time()
-    theta = SGD(lr, max_iter, X, y, batch_type='Full', print_interval=print_interval)
+    theta = SGD(lr, max_iter, X, y, batch_type='Full',
+                lr_optimizer='invscaling', print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val)
-    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
-    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
-    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
+    evalute_binary(y_val, y_pred)
 
     print("")
     print("Stochastic Mini batch")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Stochastic',
-                batch_sz=batch_sz, print_interval=print_interval)
+                batch_sz=batch_sz,  lr_optimizer='invscaling', print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val)
-    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
-    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
-    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
+    evalute_binary(y_val, y_pred)
 
     print("")
     print("Mini batch")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Mini',
-                batch_sz=batch_sz, print_interval=print_interval)
+                batch_sz=batch_sz,  lr_optimizer='invscaling', print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val)
-    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
-    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
-    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
+    evalute_binary(y_val, y_pred)
 
     print("")
     print("Single Instance")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Single',
-                batch_sz=1, print_interval=print_interval)
+                batch_sz=1,  lr_optimizer='invscaling', print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val)
     print(y_pred.shape, y_val.shape)
-    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    evalute_binary(y_val, y_pred)
+
+
+def evalute_binary(y_val, y_pred):
+    print("Validation Stats...\nAccuracy: %.3f" %
+          custom_scores.accuracy_score(y_val, y_pred))
     print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
     print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
+    print('F1 Score: %3f' % custom_scores.f1_score(y_val, y_pred))
+    custom_scores.compute_confusion_matrix(y_val, y_pred)
+
+
+def SGD_test_multiclass():
+    X,  X_val, y, y_val = get_toy_data_multiclass()
+    
+    lr = .01
+    max_iter = 50000
+    batch_sz = 64
+    print_interval = 1000
+
+    print("")
+    print("Stochastic Mini batch")
+    start = time.process_time()
+    theta = SGD_one_vs_all(lr, max_iter, X, y, batch_type='Stochastic', lr_optimizer="invscaling",
+                           batch_sz=batch_sz, print_interval=print_interval)
+    print("Time Spent ", time.process_time() - start)
+    y_pred = classify(theta, X_val, binary=False)
+    evalute_multiclass(y_val, y_pred)
+
+
+def evalute_multiclass(y_val, y_pred):
+    print("Validation Stats...\nAccuracy: %.3f" %
+          custom_scores.accuracy_score(y_val, y_pred, mode='multi'))
+    print("Precision: %.3f" %
+          custom_scores.precision_score(y_val, y_pred, mode='multi'))
+    print('Recall: %.3f' % custom_scores.recall_score(
+        y_val, y_pred, mode='multi'))
+    print('F1 Score: %3f' % custom_scores.f1_score(y_val, y_pred, mode='multi'))
+
+    custom_scores.compute_confusion_matrix(y_val, y_pred)
