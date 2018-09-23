@@ -26,7 +26,7 @@ def get_iteration_log():
     global __iteration_log
     cols = len(__iteration_log[0])
     print(cols)
-    df = pd.DataFrame(__iteration_log, columns=['it', 'b_it', 'epoch', 'error_train', 'eta', 'error_val'][:cols])
+    df = pd.DataFrame(__iteration_log, columns=['it', 'b_it', 'epoch', 'acc_train', 'eta', 'acc_val'][:cols])
     df.set_index(df.it)
     return df
 
@@ -112,8 +112,10 @@ def hypothesis(theta,X,stable=False):
 # Given a threshold apply a 
 # binary classification of the samples
 # regarding an optimized theta
-def classify(theta, X, th):
-    X = np.insert(X, 0, 1, axis=1)
+def classify(theta, X, th=0.5):
+
+    if theta.shape[0] > X.shape[1]:
+        X = np.insert(X, 0, 1, axis=1)
     y = hypothesis(theta, X)
     y[y >= th] = 1
     y[y < th] = 0
@@ -176,9 +178,9 @@ def grad_logit_step_test():
 
         theta = theta_temp.copy()
         print("Iter %i theta: %s" % (i, theta))
-        y_hat = hypothesis(theta, X)
-        error = math.sqrt(((y_hat-y)**2).mean())
-        print("RMSE error: %.4f" % error)
+        y_hat = classify(theta, X)        
+        print("Training Accuracy: %.3f" % custom_scores.accuracy_score(y, y_hat))
+        
 
     theta = np.array(theta)
     print("Predicted: %s" % (hypothesis(theta, X)))
@@ -200,7 +202,7 @@ def get_toy_data_big():
     return X_train, X_test, y_train, y_test
 
 def SGD(lr, max_iter, X, y, lr_optimizer=None,
-        epsilon=0.001, power_t=0.25, t=1.0,
+        power_t=0.25, t=1.0,
         batch_type='Full',
         batch_sz=1,
         print_interval=100,
@@ -235,8 +237,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         print('Shuffled')
     global __iteration_log
     __iteration_log = []
-    error_val = 0.
-    while ( ( (epsilon is None) or (error > epsilon) ) and (it < max_iter) ):
+    acc_val = 0.
+    while ( it < max_iter ):
         if lr_optimizer == 'invscaling':
             eta = lr / (it + 1) * pow(t, power_t)
         else:
@@ -258,8 +260,9 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
 
         theta_temp = grad_logit_step(theta, X_, y_, eta, error)
 
-        y_pred = hypothesis(theta_temp, X_)
-        error = ((y_ - y_pred) ** 2).mean() / 2
+        y_pred = classify(theta_temp, X_)
+        
+        acc_train = custom_scores.accuracy_score(y_, y_pred)        
 
         theta = theta_temp.copy()
 
@@ -267,39 +270,36 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         t += 1
 
         if X_val is not None:
-            y_pred_val = predict(theta, X_val)
-            error_val = ((y_val - y_pred_val) ** 2).mean() / 2
+            y_pred_val = classify(theta, X_val)
+            acc_val = custom_scores.accuracy_score(y_val, y_pred_val)                    
 
         if (it % print_interval) == 0 or it == 1:
             if X_val is not None:
-                print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f Val Loss: %.8f" %
-                      (it, b_it, epoch, error, eta, error_val))
+                print("It: %s Batch: %s Epoch %i Train Acc: %.8f lr: %.8f Val Acc: %.8f" %
+                      (it, b_it, epoch, acc_train, eta, acc_val))
             else:
-                print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.8f " %
-                      (it, b_it, epoch, error, eta))
+                print("It: %s Batch: %s Epoch %i Train Acc : %.8f lr: %.8f " %
+                      (it, b_it, epoch, acc_train, eta))
 
         if X_val is not None:
-            __iteration_log.append((it, b_it, epoch, error, eta, error_val))
+            __iteration_log.append((it, b_it, epoch, acc_train, eta, acc_val))
         else:
-            __iteration_log.append((it, b_it, epoch, error, eta))
+            __iteration_log.append((it, b_it, epoch, acc_train, eta))
+    
+    y_pred = classify(theta, X)
+        
+    acc_train = custom_scores.accuracy_score(y, y_pred)        
 
     if X_val is not None:
-        print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f Val Loss: %.8f" %
-              (it, b_it, epoch, error, eta, error_val))
-        __iteration_log.append((it, b_it, epoch, error, eta, error_val))
+        print("Finished \n Whole Set Train Acc: %.8f Val Acc: %.8f" %
+              (acc_train, acc_val))
+        __iteration_log.append((it, b_it, epoch, acc_train, eta, acc_val))
     else:
-        print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f " %
-              (it, b_it, epoch, error, eta))
-        __iteration_log.append((it, b_it, epoch, error, eta))
+        print("Finished \n Whole Set Train Acc: %.8f " %
+              (acc_train))
+        __iteration_log.append((it, b_it, epoch, acc_train))
     return theta
 
-
-
-def predict(theta,X):
-    X = np.insert(X, 0, 1, axis=1)
-    y = hypothesis(theta, X)
-    X = np.delete(X, 0, axis=1)
-    return y
 
 
 def SGD_test():    
@@ -309,16 +309,16 @@ def SGD_test():
     lr = .01
     max_iter = 10000
     batch_sz = 100
-    print_interval=1000
+    print_interval=100
 
     print("")
     print("Full batch")
 
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Full', print_interval=print_interval)
-    print("finished ", time.process_time() - start)
-    y_pred = predict(theta, X_val)
-    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Time Spent ", time.process_time() - start)
+    y_pred = classify(theta, X_val)
+    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
     print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
     print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
@@ -327,9 +327,9 @@ def SGD_test():
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Stochastic',
                 batch_sz=batch_sz, print_interval=print_interval)
-    print("finished ", time.process_time() - start)
-    y_pred = predict(theta, X_val)
-    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Time Spent ", time.process_time() - start)
+    y_pred = classify(theta, X_val)
+    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
     print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
     print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
@@ -338,9 +338,9 @@ def SGD_test():
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Mini',
                 batch_sz=batch_sz, print_interval=print_interval)
-    print("finished ", time.process_time() - start)
-    y_pred = predict(theta, X_val)
-    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Time Spent ", time.process_time() - start)
+    y_pred = classify(theta, X_val)
+    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
     print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
     print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
@@ -348,10 +348,10 @@ def SGD_test():
     print("Single Instance")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Single',
-                epsilon=None, batch_sz=1, print_interval=print_interval)
-    print("finished ", time.process_time() - start)
-    y_pred = predict(theta, X_val)
+                batch_sz=1, print_interval=print_interval)
+    print("Time Spent ", time.process_time() - start)
+    y_pred = classify(theta, X_val)
     print(y_pred.shape, y_val.shape)
-    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Validation Stats... \n Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
     print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
     print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
