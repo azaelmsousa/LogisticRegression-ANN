@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def accuracy_score(Y,predY,mode='binary'):
 	acc = 0.0
@@ -40,15 +40,3 @@ def recall_score(Y,predY,mode='binary'):
 			recall += TP / (TP + FN)
 		recall /= len(classes)
 	return recall
-
-def fb_score(Y,predY,beta,mode='binary'):
-	fbscore = 0.0
-	if (mode=='binary'):
-		precision = PrecisionScore(predY,Y)
-		recall = RecallScore(predY,Y)
-		fscore = (1 + beta*beta)*((precision*recall)/((beta*beta*precision)+recall))
-	elif (mode=='multi'):
-		precision = PrecisionScore(predY,Y,'multi')
-		recall = RecallScore(predY,Y,'multi')
-		fscore = (1 + beta*beta)*((precision*recall)/((beta*beta*precision)+recall))
-	return fscore

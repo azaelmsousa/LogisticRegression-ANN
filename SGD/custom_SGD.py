@@ -1,15 +1,23 @@
-import numpy as np  # linear algebra
-from numpy.core.umath_tests import inner1d
-import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-from pandas.api.types import CategoricalDtype
-from sklearn import model_selection, ensemble, metrics, linear_model
-import matplotlib.pyplot as plt
-import os
 import math
-from sklearn.utils import shuffle
-from sklearn.datasets import make_regression
-import timeit
+import os
+import sys 
+sys.path.append("../")
 import time
+import timeit
+
+import matplotlib.pyplot as plt
+import numpy as np  # linear algebra
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
+from numpy.core.umath_tests import inner1d
+from pandas.api.types import CategoricalDtype
+from sklearn import ensemble, linear_model, metrics, model_selection
+from sklearn.datasets import load_breast_cancer, make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+
+from utils import custom_scores
+
+
 
 __iteration_log = []
 
@@ -140,7 +148,7 @@ def cross_entropy_loss(h, y):
 	h[h > 1.-eps] = 1.-eps
 	return np.multiply(np.log(h),y) + np.multiply((np.log(1-h)),(1-y))
 
-def grad_logit_step(theta, X, y, alpha, j, error):
+def grad_logit_step(theta, X, y, alpha, error):
     """
     Given the current Theta Set it calculates the gradient and new values for it.
     """
@@ -158,13 +166,13 @@ def grad_logit_step_test():
 
     print("X values ")
     print(X)
-    alpha = .1
+    alpha = .9
     max_iter = 50
     for i in range(max_iter):
         h0 = hypothesis(theta, X)
         error = (h0 - y)
         # for j in range(X.shape[1]):
-        theta_temp = grad_logit_step(theta, X, y, alpha, 0, error)
+        theta_temp = grad_logit_step(theta, X, y, alpha, error)
 
         theta = theta_temp.copy()
         print("Iter %i theta: %s" % (i, theta))
@@ -178,14 +186,18 @@ def grad_logit_step_test():
 
 
 def get_toy_data():
-    y = np.array([2., 4.], dtype='float64')
+    y = np.array([1., 0.], dtype='float64')
     X = np.array([[4., 7.], [2., 6.]], dtype='float64')
     return X, y
 
 
 def get_toy_data_big():
-    return make_regression(n_samples=50000, n_features=25, noise=0.5)
-
+    """
+        Returns  X_train, X_test, y_train, y_test from Breat Cancer
+    """
+    X,y = load_breast_cancer(return_X_y=True)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    return X_train, X_test, y_train, y_test
 
 def SGD(lr, max_iter, X, y, lr_optimizer=None,
         epsilon=0.001, power_t=0.25, t=1.0,
@@ -224,9 +236,9 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     global __iteration_log
     __iteration_log = []
     error_val = 0.
-    while ((error > epsilon) and (it < max_iter)):
+    while ( ( (epsilon is None) or (error > epsilon) ) and (it < max_iter) ):
         if lr_optimizer == 'invscaling':
-            eta = lr / (i + 1) * pow(t, power_t)
+            eta = lr / (it + 1) * pow(t, power_t)
         else:
             eta = lr
 
@@ -243,8 +255,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         h0 = hypothesis(theta, X_)
 
         error = (h0 - y_)
-        for j in range(nparams):
-            theta_temp[j] = grad_logit_step(theta, X_, y_, eta, j,  error)
+
+        theta_temp = grad_logit_step(theta, X_, y_, eta, error)
 
         y_pred = hypothesis(theta_temp, X_)
         error = ((y_ - y_pred) ** 2).mean() / 2
@@ -290,57 +302,56 @@ def predict(theta,X):
     return y
 
 
-def SGD_test():
-    X_, y_ = get_toy_data_big()
-    X,  X_val, y, y_val = model_selection.train_test_split(
-        X_, y_, test_size=0.2, random_state=42)
+def SGD_test():    
+    X,  X_val, y, y_val = get_toy_data_big()        
     print("X values ")
     print(X)
     lr = .01
-    max_iter = 2000
+    max_iter = 10000
     batch_sz = 100
+    print_interval=1000
 
     print("")
     print("Full batch")
 
     start = time.process_time()
-    theta = SGD(lr, max_iter, X, y, batch_type='Full', print_interval=100)
+    theta = SGD(lr, max_iter, X, y, batch_type='Full', print_interval=print_interval)
     print("finished ", time.process_time() - start)
     y_pred = predict(theta, X_val)
-    print("MSE: %.3f" % metrics.mean_squared_error(y_val, y_pred))
-    print("MAE: %.3f" % metrics.mean_absolute_error(y_val, y_pred))
-    print('R2: %.3f' % metrics.r2_score(y_val, y_pred))
+    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
+    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
     print("")
     print("Stochastic Mini batch")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Stochastic',
-                batch_sz=batch_sz, print_interval=100)
+                batch_sz=batch_sz, print_interval=print_interval)
     print("finished ", time.process_time() - start)
     y_pred = predict(theta, X_val)
-    print("MSE: %.3f" % metrics.mean_squared_error(y_val, y_pred))
-    print("MAE: %.3f" % metrics.mean_absolute_error(y_val, y_pred))
-    print('R2: %.3f' % metrics.r2_score(y_val, y_pred))
+    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
+    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
     print("")
     print("Mini batch")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Mini',
-                batch_sz=batch_sz, print_interval=100)
+                batch_sz=batch_sz, print_interval=print_interval)
     print("finished ", time.process_time() - start)
     y_pred = predict(theta, X_val)
-    print("MSE: %.3f" % metrics.mean_squared_error(y_val, y_pred))
-    print("MAE: %.3f" % metrics.mean_absolute_error(y_val, y_pred))
-    print('R2: %.3f' % metrics.r2_score(y_val, y_pred))
+    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
+    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
 
     print("")
     print("Single Instance")
     start = time.process_time()
     theta = SGD(lr, max_iter, X, y, batch_type='Single',
-                epsilon=10**-10, batch_sz=1, print_interval=100)
+                epsilon=None, batch_sz=1, print_interval=print_interval)
     print("finished ", time.process_time() - start)
     y_pred = predict(theta, X_val)
     print(y_pred.shape, y_val.shape)
-    print("MSE: %.3f" % metrics.mean_squared_error(y_val, y_pred))
-    print("MAE: %.3f" % metrics.mean_absolute_error(y_val, y_pred))
-    print('R2: %.3f' % metrics.r2_score(y_val, y_pred))
+    print("Accuracy: %.3f" % custom_scores.accuracy_score(y_val, y_pred))
+    print("Precision: %.3f" % custom_scores.precision_score(y_val, y_pred))
+    print('Recall: %.3f' % custom_scores.recall_score(y_val, y_pred))
