@@ -7,7 +7,7 @@ import pandas as pd
 import sklearn.datasets as sk_datasets
 import sklearn.metrics as metrics
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, normalize
 
 
 # Sigmoid function for the activation
@@ -37,11 +37,18 @@ def tanh(h):
     return (2 / (1+np.exp(-2*h)))-1
 
 #
-# Deivative of the hyperbolic tangent
+# Derivative of the hyperbolic tangent
 # function. It is used as part of the
 # back propagation algorithm.
 #
 def tanh_derivative(h):
     tanh_l = (4*np.exp(-2*h))/((1+np.exp(-2*h))**2)
     return tanh_l
+
+#
+# The softmax function transforms a set of weights in to a probability distribution function
+#
+def softmax(y): 
+    exp_y = np.exp(y)       
+    return normalize(exp_y, norm='l1', axis=1)
 

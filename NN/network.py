@@ -20,19 +20,24 @@ from NN import activation_functions
 class Layer:
     def __init__(self, input_sz, neurons, activation, weights=None, label=None):
         self.activation = activation_functions.__dict__[activation]
-        self.act_derivative = activation_functions.__dict__[
-            activation+"_derivative"]
+        
         self.input_sz = input_sz
         self.neurons = neurons
         self.label = label
-        if weights is not None:
-            self.weights = weights
-        else:
-            self.weights = np.random.rand(input_sz+1, neurons)
+        
+        if activation != 'softmax':
+            self.act_derivative = activation_functions.__dict__[
+                activation+"_derivative"]
+            if weights is not None:
+                self.weights = weights
+            else:
+                self.weights = np.random.rand(input_sz+1, neurons)
+        else:             
+            self.weights = np.ones((input_sz+1, neurons))
 
     def __str__(self):
         return inspect.cleandoc("""
-        {} \t (input={}, neurons={}, activation={})""".format(self.label,self.input_sz,self.neurons, self.activation.__name__))
+        {}\t(input={}, neurons={}, activation={})""".format(self.label,self.input_sz,self.neurons, self.activation.__name__))
 
     def get_weights(self):
         return self.weights
@@ -43,9 +48,14 @@ class Layer:
 
     def feed_forward(self, input_values):
         print("Forwardign {} weights {} {}".format(self.label, input_values.shape, self.weights.shape))
-        _input_values = input_values.copy()
-        _input_values = np.insert(_input_values, 0, 1, axis=1)
-        output_values = np.matmul(_input_values, self.get_weights())
+
+        if self.activation.__name__ != 'softmax':        
+            _input_values = input_values.copy()
+            _input_values = np.insert(_input_values, 0, 1, axis=1)
+            output_values = np.matmul(_input_values, self.get_weights())
+        else: 
+            output_values = input_values
+
         activation_value = self.activation(output_values)
         
         return output_values, activation_value
