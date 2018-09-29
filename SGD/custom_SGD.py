@@ -419,7 +419,7 @@ def evalute_binary(y_val, y_pred):
 def SGD_test_multiclass():
     X,  X_val, y, y_val = get_toy_data_multiclass()
     
-    lr = .01
+    lr = .1
     max_iter = 50000
     batch_sz = 64
     print_interval = 1000

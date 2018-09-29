@@ -97,8 +97,9 @@ def plot_confusion_matrix(cm, classes,
 def compute_confusion_matrix(y_test, y_pred, class_names=None):
     # Compute confusion matrix
     if class_names is None: 
-        classes  = np.unique(y_test)
+        classes  = np.sort(np.unique(y_test))
         class_names = {str(c):c for c in classes}
+        print (class_names)
 
     cnf_matrix = confusion_matrix(y_test, y_pred)
     np.set_printoptions(precision=2)
