@@ -13,14 +13,13 @@ import sklearn.datasets as sk_datasets
 import sklearn.metrics as metrics
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
-from NN import activation_functions
+from NN import activation_functions, loss_functions
 
 
 
 class Layer:
     def __init__(self, input_sz, neurons, activation, weights=None, label=None):
-        self.activation = activation_functions.__dict__[activation]
-        
+        self.activation = activation_functions.__dict__[activation]        
         self.input_sz = input_sz
         self.neurons = neurons
         self.label = label
@@ -61,8 +60,10 @@ class Layer:
         return output_values, activation_value
 
 class NN:    
-    def __init__(self):
+    def __init__(self, loss):
         self.clear_layers()
+        self.loss = loss_functions.__dict__[loss]
+        self.loss_derivative = loss_functions.__dict__[loss+"_derivative"]
 
     def clear_layers(self):
         self.layers = []
@@ -94,7 +95,16 @@ class NN:
         output_values, activation_value = self.layers[-1].feed_forward(input_values)            
         return output_values, activation_value
 
+    def back_propagante(error): 
+        return None
 
+    def fit(self,X,y, max_it=100):
+        it = 0
+        while it < max_it:
+            _, pdf = self.feed_forward(X)
+            y_  = pdf.argmax(axis=-1)
+
+            it += 1
 
 
 
