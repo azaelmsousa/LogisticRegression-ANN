@@ -97,7 +97,8 @@ class Layer:
         dprint(('self.delta', self.delta))
 
     def set_dW(self):
-        self.dW = self.delta * self.input
+        dprint(('self.dW', self.delta.shape, self.input.shape))
+        self.dW = self.delta * self.input.T
         dprint(('self.dW', self.dW))
 
     def set_dETotal_dOut(self):
@@ -131,7 +132,7 @@ class NN:
         self.clear_layers()
         self.lr = lr
         self.loss = loss_functions.__dict__[loss]
-        self.loss_derivative = loss_functions.__dict__[loss+"_derivative_chain"]
+        self.loss_derivative = loss_functions.__dict__[loss+"_derivative"]
 
     def clear_layers(self):
         self.layers = []
@@ -166,12 +167,15 @@ class NN:
         l_sz = len(self.layers)
         l_idx = l_sz - 1
         layer = self.layers[l_idx]
-        dE_dW = self.loss_derivative(layer.out, Y)
+        dE_dW = self.loss_derivative(layer.input, layer.out, Y)
         layer.backpropagate(dETotal_dOut=dE_dW, lr=lr)
 
-        while l_idx > 0:
+        while l_idx > 0:            
             l_idx -= 1
             layer = self.layers[l_idx]
+            dprint("============================")
+            dprint(layer.label)
+            dprint("============================")
             layer.backpropagate(output_layer=self.layers[l_idx+1])
 
     def fit(self, X, Y, lr=0.5,
