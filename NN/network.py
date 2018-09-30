@@ -163,6 +163,10 @@ class NN:
 
         return net, out
 
+    def predict(self, X):        
+        result  = [self.feed_forward(X[i:i+1,:])[1] for i in range(X.shape[0])]
+        return result
+
     def backpropagate(self, Y, lr=.5):
         l_sz = len(self.layers)
         l_idx = l_sz - 1
@@ -181,8 +185,6 @@ class NN:
     def fit(self, X, Y, lr=0.5,
             max_iter=1000, lr_optimizer=None,
             epsilon=0.001, power_t=0.25, t=1.0,
-            batch_type='Full',
-            batch_sz=1,
             print_interval=100,
             X_val=None,
             y_val=None):
@@ -192,18 +194,13 @@ class NN:
         epoch = 0
         lst_epoch = 0
         b_it = 0
-        nsamples = X.shape[0]
 
         self.lr = lr
 
-        if batch_type == 'Full':
-            b_sz = nsamples
-        else:  # Mini or Stochastic
-            b_sz = batch_sz
-
-        if batch_type == 'Stochastic':
-            X, Y = shuffle(X, Y)
-            print('Shuffled')
+        b_sz = 1
+        
+        X, Y = shuffle(X, Y)
+        print('Shuffled')
 
         global __iteration_log
         __iteration_log = []
@@ -225,15 +222,17 @@ class NN:
                     X, Y, b_it, b_sz, epoch)
                 if lst_epoch < epoch:
                     lst_epoch = epoch
-                    if batch_type == 'Stochastic':
-                        X, Y = shuffle(X, Y)
+                    X, Y = shuffle(X, Y)
 
             # Only exits the loop when there is data for the batch
             
+            # print(X_.shape)
+            error = 0.
+            
             _, aY = self.feed_forward(X_)
 
-            error = self.loss(aY, Y_)
-
+            error += self.loss(aY, Y_)
+            
             self.backpropagate(Y_, lr)
 
             it += 1
@@ -266,3 +265,6 @@ class NN:
             print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f " %
                     (it, b_it, epoch, error, eta))
             __iteration_log.append((it, b_it, epoch, error, eta))
+
+
+

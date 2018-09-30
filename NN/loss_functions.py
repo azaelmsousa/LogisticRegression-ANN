@@ -29,6 +29,7 @@ def cross_entropy(A, Y):
 #
 def cross_entropy_derivative(I, A, Y):
     error = (A - Y)
+    # print(Y.shape, A.shape, error.shape)
     grad = np.dot(I.T, error)
     return grad
 

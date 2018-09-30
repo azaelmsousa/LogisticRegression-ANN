@@ -115,3 +115,16 @@ def compute_confusion_matrix(y_test, y_pred, class_names=None):
                         title='Normalized confusion matrix')
 
     plt.show()
+
+
+
+def evalute_multiclass(y_val, y_pred):
+    print("Validation Stats...\nAccuracy: %.3f" %
+          accuracy_score(y_val, y_pred, mode='multi'))
+    print("Precision: %.3f" %
+          precision_score(y_val, y_pred, mode='multi'))
+    print('Recall: %.3f' % recall_score(
+        y_val, y_pred, mode='multi'))
+    print('F1 Score: %3f' % f1_score(y_val, y_pred, mode='multi'))
+
+    compute_confusion_matrix(y_val, y_pred)
