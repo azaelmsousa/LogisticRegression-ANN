@@ -20,7 +20,7 @@ def cross_entropy(A, Y):
     eps = np.finfo(np.float128).eps
     A[A < eps] = eps
     A[A > 1.-eps] = 1.-eps
-    return -np.multiply(np.log(A), Y) - np.multiply((np.log(1-A)), (1-Y))
+    return (-np.multiply(np.log(A), Y) - np.multiply((np.log(1-A)), (1-Y))).sum()
 
 #
 # Derivative of the Cross Entropy loss function.
@@ -32,6 +32,9 @@ def cross_entropy_derivative(I, A, Y):
     grad = np.dot(I.T, error)
     return grad
 
+def cross_entropy_derivative_chain(A, Y):
+    error = (A - Y)
+    return error
 #
 # Sum of the squared differences (SMD) loss
 # function, where h is the activation of the
@@ -73,3 +76,10 @@ def mse_derivative(I, A, Y):
     m = Y.shape[0]
     return (2/m) * (A - Y).sum()
 
+
+def mse_derivative_chain(A, Y): 
+    '''
+        Return the gradient function for the MSE
+        2/m * Sum(a - y)
+    '''    
+    return 2 * (A - Y)
