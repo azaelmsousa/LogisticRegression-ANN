@@ -39,7 +39,7 @@ def get_iteration_log():
 
 
 class Layer:
-    def __init__(self, input_sz, neurons, activation, bias=1.0, weights=None, label=None):
+    def __init__(self, input_sz, neurons, activation, bias=.0, weights=None, label=None):
         self.activation = activation_functions.__dict__[activation]
         self.input_sz = input_sz
         self.neurons = neurons
@@ -164,7 +164,7 @@ class NN:
         return net, out
 
     def predict(self, X):        
-        result  = [self.feed_forward(X[i:i+1,:])[1] for i in range(X.shape[0])]
+        result  = [self.feed_forward(X[i:i+1,:])[1].flatten() for i in range(X.shape[0])]
         return result
 
     def backpropagate(self, Y, lr=.5):
@@ -187,7 +187,7 @@ class NN:
             epsilon=0.001, power_t=0.25, t=1.0,
             print_interval=100,
             X_val=None,
-            y_val=None):
+            Y_val=None):
 
         error = 1
         it = 0
@@ -238,31 +238,33 @@ class NN:
             it += 1
             t += 1
 
-            if X_val is not None:
-                _, y_pred_val = self.feed_forward(X_val)
-                error_val = ((y_val - y_pred_val) ** 2).mean() / 2
-
             if (it % print_interval) == 0 or it == 1:
                 if X_val is not None:
-                    print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f Val Loss: %.8f" %
+                    y_pred_val = np.array(self.predict(X_val))
+                    print (y_pred_val.shape, Y_val.shape)
+                    error_val = np.array(self.loss(y_pred_val, Y_val)) / X_val.shape[0]
+
+            
+                if X_val is not None:
+                    print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
                             (it, b_it, epoch, error, eta, error_val))
                 else:
-                    print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.8f " %
+                    print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.6f " %
                             (it, b_it, epoch, error, eta))
 
-            if X_val is not None:
-                __iteration_log.append(
-                    (it, b_it, epoch, error, eta, error_val))
-            else:
-                __iteration_log.append((it, b_it, epoch, error, eta))
+                if X_val is not None:
+                    __iteration_log.append(
+                        (it, b_it, epoch, error, eta, error_val))
+                else:
+                    __iteration_log.append((it, b_it, epoch, error, eta))
 
         if X_val is not None:
-            print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f Val Loss: %.8f" %
+            print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
                     (it, b_it, epoch, error, eta, error_val))
             __iteration_log.append(
                 (it, b_it, epoch, error, eta, error_val))
         else:
-            print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.8f " %
+            print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f " %
                     (it, b_it, epoch, error, eta))
             __iteration_log.append((it, b_it, epoch, error, eta))
 

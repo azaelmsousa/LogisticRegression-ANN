@@ -36,11 +36,11 @@ def one_hot_decode(Y):
     return Y.argmax(axis=-1)
 
 
-def get_toy_data_multiclass(nclasses=4):
+def get_toy_data_multiclass(nclasses=4, nsamples=500, nfeatures=10):
     """
         Returns  X_train, X_test, y_train, y_test from with 4 classes and 20 features
     """
-    X, y = make_classification(n_samples=500, n_features=10, n_classes=nclasses,
+    X, y = make_classification(n_samples=nsamples, n_features=nfeatures, n_classes=nclasses,
                                n_clusters_per_class=1, n_informative=4,
                                n_redundant=0)
 
