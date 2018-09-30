@@ -16,7 +16,7 @@ from sklearn.preprocessing import LabelBinarizer
 # It computes the error of the predicted
 # class and the correct one.
 #
-def cross_entropy(I, A, Y):
+def cross_entropy(A, Y):
     eps = np.finfo(np.float128).eps
     A[A < eps] = eps
     A[A > 1.-eps] = 1.-eps
@@ -38,7 +38,7 @@ def cross_entropy_derivative(I, A, Y):
 # last layer. It computes the error of the
 # predicted class and the correct one.
 #
-def smd(I, A, Y):
+def smd(A, Y):
     error = np.square((A - Y)).sum()
     return error/2
 
@@ -48,12 +48,16 @@ def smd(I, A, Y):
 # last layer. It computes the error of the
 # predicted class and the correct one.
 #
+
+def smd_derivative_chain(A, Y):
+    return -(Y - A)
+
 def smd_derivative(I, A, Y):
     error = (A - Y)
     grad = np.dot(I.transpose(), error)
     return grad
 
-def mse(I, A, Y): 
+def mse(A, Y): 
     return ((A-Y)**2).mean()
 #
 # Mean Squared Error loss

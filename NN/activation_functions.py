@@ -28,6 +28,10 @@ def sigmoid_derivative(h):
     derivative = sig*(1-sig)
     return derivative
 
+def sigmoid_derivative_chain(output):
+    derivative = output*(1-output)
+    return derivative
+
 #
 # Hyberbolic tangent function for the
 # acivation of a neuron, where h is the
