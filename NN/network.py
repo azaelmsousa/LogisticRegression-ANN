@@ -19,22 +19,25 @@ from utils import dataset_helper
 
 DEBUG = False
 
+__iteration_log = []
 
 def dprint(value):
     if DEBUG:
         print(value)
 
 
-__iteration_log = []
-
+def insert_iteration_log(values): 
+    global __iteration_log
+    __iteration_log.append(values)
 
 def get_iteration_log():
     global __iteration_log
     cols = len(__iteration_log[0])
     print(cols)
-    df = pd.DataFrame(__iteration_log, columns=[
+    df = pd.DataFrame(__iteration_log, columns=[                        
                       'it', 'b_it', 'epoch', 'error_train', 'eta', 'error_val'][:cols])
     df.set_index(df.it)
+    df.index = df.it
     return df
 
 
@@ -186,6 +189,7 @@ class NN:
             max_iter=1000, lr_optimizer=None,
             epsilon=0.001, power_t=0.25, t=1.0,
             print_interval=100,
+            decay_iteractions=None, decay_rate = None,
             X_val=None,
             Y_val=None):
 
@@ -205,12 +209,17 @@ class NN:
         global __iteration_log
         __iteration_log = []
         error_val = 0.
-
+        
         while ((error > epsilon) and (it < max_iter)):
-            if lr_optimizer == 'invscaling':
-                eta = self.lr / (it + 1) * pow(t, power_t)
+            if (it % print_interval) == 0 or it == 1:
+                error = .0
+            if decay_iteractions is not None: 
+                eta = self.lr * math.pow(decay_rate, it // decay_iteractions)                                
             else:
-                eta = self.lr
+                if lr_optimizer == 'invscaling':
+                    eta = self.lr / (it + 1) * pow(t, power_t)
+                else:
+                    eta = self.lr
 
             X_ = np.zeros(0)
             Y_ = np.zeros(0)
@@ -220,28 +229,30 @@ class NN:
                 # Checking if it is a new epoch to shuffle the data.
                 X_, Y_, b_it, epoch = dataset_helper.get_batch(
                     X, Y, b_it, b_sz, epoch)
-                if lst_epoch < epoch:
+                if lst_epoch < epoch:                    
                     lst_epoch = epoch
                     X, Y = shuffle(X, Y)
 
             # Only exits the loop when there is data for the batch
             
-            # print(X_.shape)
-            error = 0.
+            # print(X_.shape)            
             
             _, aY = self.feed_forward(X_)
 
             error += self.loss(aY, Y_)
             
-            self.backpropagate(Y_, lr)
+            self.backpropagate(Y_, eta)
 
             it += 1
             t += 1
+            
+            if (it % print_interval) == 0:
+                
+                error /= print_interval 
+                
 
-            if (it % print_interval) == 0 or it == 1:
                 if X_val is not None:
                     y_pred_val = np.array(self.predict(X_val))
-                    print (y_pred_val.shape, Y_val.shape)
                     error_val = np.array(self.loss(y_pred_val, Y_val)) / X_val.shape[0]
 
             
@@ -252,21 +263,21 @@ class NN:
                     print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.6f " %
                             (it, b_it, epoch, error, eta))
 
-                if X_val is not None:
-                    __iteration_log.append(
+                if X_val is not None:                    
+                    insert_iteration_log(
                         (it, b_it, epoch, error, eta, error_val))
-                else:
-                    __iteration_log.append((it, b_it, epoch, error, eta))
+                else:                    
+                    insert_iteration_log((it, b_it, epoch, error, eta))                
 
         if X_val is not None:
             print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
-                    (it, b_it, epoch, error, eta, error_val))
-            __iteration_log.append(
+                    (it, b_it, epoch, error, eta, error_val))            
+            insert_iteration_log(
                 (it, b_it, epoch, error, eta, error_val))
         else:
             print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f " %
-                    (it, b_it, epoch, error, eta))
-            __iteration_log.append((it, b_it, epoch, error, eta))
-
+                    (it, b_it, epoch, error, eta))                     
+            insert_iteration_log((it, b_it, epoch, error, eta))
+        
 
 
