@@ -21,20 +21,22 @@ DEBUG = False
 
 __iteration_log = []
 
+
 def dprint(value):
     if DEBUG:
         print(value)
 
 
-def insert_iteration_log(values): 
+def insert_iteration_log(values):
     global __iteration_log
     __iteration_log.append(values)
+
 
 def get_iteration_log():
     global __iteration_log
     cols = len(__iteration_log[0])
     print(cols)
-    df = pd.DataFrame(__iteration_log, columns=[                        
+    df = pd.DataFrame(__iteration_log, columns=[
                       'it', 'b_it', 'epoch', 'error_train', 'eta', 'error_val'][:cols])
     df.set_index(df.it)
     df.index = df.it
@@ -68,13 +70,8 @@ class Layer:
 
     def feed_forward(self, input_values):
 
-        if self.activation.__name__ != 'softmax':
-            _input_values = input_values.copy()
-
-            W = self.weights.copy()
-            B = np.ones(input_values.shape[0])*self.bias
-            dprint((self.label, _input_values.shape, W.shape))
-            self.net = np.matmul(_input_values, W) + B
+        if self.activation.__name__ != 'softmax':            
+            self.net = np.dot(input_values, self.weights) + self.bias
         else:
             self.net = input_values.copy()
 
@@ -85,49 +82,18 @@ class Layer:
         dprint(('out', self.out))
         return self.net, self.out
 
-    # Here starts the back propagation implementation
-    def update(self, lr=0.5):
-        self.weights -= (lr * self.dW)
-
-        dprint(('self.weights', self.weights))
-
-    def set_dOut_dNet(self):
-        self.dOut_dNet = self.act_derivative(self.out)
-        dprint(('self.dOut_dNet', self.dOut_dNet))
-
-    def set_delta(self, dETotal_dOut):
-        self.delta = dETotal_dOut * self.dOut_dNet
-        dprint(('self.delta', self.delta))
-
-    def set_dW(self):
-        dprint(('self.dW', self.delta.shape, self.input.shape))
-        self.dW = self.delta * self.input.T
-        dprint(('self.dW', self.dW))
-
-    def set_dETotal_dOut(self):
-        temp = (self.delta * self.weights)
-        dprint(('calc_dETotal_dOut', temp))
-        self.dETotal_dOut = temp.sum(axis=1)
-
-    def get_dETotal_dOut(self):
-        dprint(('get_dETotal_dOut', self.dETotal_dOut))
-        return self.dETotal_dOut
-
     def backpropagate(self, lr=0.5, output_layer=None, dETotal_dOut=None):
+
         if output_layer is None:
-            dETotal_dOut = dETotal_dOut
+            self.error = dETotal_dOut
         else:
-            dETotal_dOut = output_layer.get_dETotal_dOut()
+            self.error = output_layer.delta.dot(output_layer.weights.T)
+
+        self.delta = self.error * self.act_derivative(self.out)
+
+        self.weights -= lr * self.input.T.dot(self.delta)
 
         dprint(('dETotal_dOut', dETotal_dOut))
-
-        self.set_dOut_dNet()
-        self.set_delta(dETotal_dOut)
-        self.set_dW()
-        # update the total derivative error before weight updates
-        self.set_dETotal_dOut()
-
-        self.update(lr)
 
 
 class NN:
@@ -135,7 +101,8 @@ class NN:
         self.clear_layers()
         self.lr = lr
         self.loss = loss_functions.__dict__[loss]
-        self.loss_derivative = loss_functions.__dict__[loss+"_derivative"]
+        self.loss_derivative = loss_functions.__dict__[
+            loss+"_derivative_chain"]
 
     def clear_layers(self):
         self.layers = []
@@ -144,19 +111,19 @@ class NN:
         self.layers.append(layer)
 
     def summary(self):
-        dprint(("Model Summary"))
-        dprint(("-------------------------------"))
+        print(("Model Summary"))
+        print(("-------------------------------"))
         for layer in self.layers:
-            dprint((layer))
-        dprint(("-------------------------------"))
+            print((layer))
+        print(("-------------------------------"))
 
     def show_weights(self):
-        dprint(("Model Weights"))
-        dprint(("-------------------------------"))
+        print(("Model Weights"))
+        print(("-------------------------------"))
         for layer in self.layers:
-            dprint((layer))
-            dprint((layer.weights))
-        dprint(("-------------------------------"))
+            print((layer))
+            print((layer.weights))
+        print(("-------------------------------"))
 
     def feed_forward(self, X):
         input_values = X
@@ -166,18 +133,19 @@ class NN:
 
         return net, out
 
-    def predict(self, X):        
-        result  = [self.feed_forward(X[i:i+1,:])[1].flatten() for i in range(X.shape[0])]
+    def predict(self, X):
+        result = [self.feed_forward(X[i:i+1, :])[1].flatten()
+                  for i in range(X.shape[0])]
         return result
 
     def backpropagate(self, Y, lr=.5):
         l_sz = len(self.layers)
         l_idx = l_sz - 1
         layer = self.layers[l_idx]
-        dE_dW = self.loss_derivative(layer.input, layer.out, Y)
+        dE_dW = self.loss_derivative(layer.out, Y)
         layer.backpropagate(dETotal_dOut=dE_dW, lr=lr)
 
-        while l_idx > 0:            
+        while l_idx > 0:
             l_idx -= 1
             layer = self.layers[l_idx]
             dprint("============================")
@@ -188,8 +156,8 @@ class NN:
     def fit(self, X, Y, lr=0.5,
             max_iter=1000, lr_optimizer=None,
             epsilon=0.001, power_t=0.25, t=1.0,
-            print_interval=100,
-            decay_iteractions=None, decay_rate = None,
+            print_interval=100, b_sz = 1,
+            decay_iteractions=None, decay_rate=None,
             X_val=None,
             Y_val=None):
 
@@ -201,20 +169,20 @@ class NN:
 
         self.lr = lr
 
-        b_sz = 1
         
+
         X, Y = shuffle(X, Y)
         print('Shuffled')
 
         global __iteration_log
         __iteration_log = []
         error_val = 0.
-        
+
         while ((error > epsilon) and (it < max_iter)):
             if (it % print_interval) == 0 or it == 1:
                 error = .0
-            if decay_iteractions is not None: 
-                eta = self.lr * math.pow(decay_rate, it // decay_iteractions)                                
+            if decay_iteractions is not None:
+                eta = self.lr * math.pow(decay_rate, it // decay_iteractions)
             else:
                 if lr_optimizer == 'invscaling':
                     eta = self.lr / (it + 1) * pow(t, power_t)
@@ -224,60 +192,57 @@ class NN:
             X_ = np.zeros(0)
             Y_ = np.zeros(0)
 
-
             while Y_.shape[0] == 0:
                 # Checking if it is a new epoch to shuffle the data.
                 X_, Y_, b_it, epoch = dataset_helper.get_batch(
                     X, Y, b_it, b_sz, epoch)
-                if lst_epoch < epoch:                    
+                if lst_epoch < epoch:
                     lst_epoch = epoch
                     X, Y = shuffle(X, Y)
 
             # Only exits the loop when there is data for the batch
-            
-            # print(X_.shape)            
-            
+
+            # print(X_.shape)
+
             _, aY = self.feed_forward(X_)
 
-            error += self.loss(aY, Y_)
-            
+            error += self.loss(aY, Y_) / Y_.shape[0]
+
             self.backpropagate(Y_, eta)
 
             it += 1
             t += 1
-            
+
             if (it % print_interval) == 0:
-                
-                error /= print_interval 
-                
+
+                error /= print_interval
 
                 if X_val is not None:
                     y_pred_val = np.array(self.predict(X_val))
-                    error_val = np.array(self.loss(y_pred_val, Y_val)) / X_val.shape[0]
+                    error_val = np.array(
+                        self.loss(y_pred_val, Y_val)) / X_val.shape[0]
 
-            
                 if X_val is not None:
                     print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
-                            (it, b_it, epoch, error, eta, error_val))
+                          (it, b_it, epoch, error, eta, error_val))
                 else:
                     print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.6f " %
-                            (it, b_it, epoch, error, eta))
+                          (it, b_it, epoch, error, eta))
 
-                if X_val is not None:                    
+                if X_val is not None:
                     insert_iteration_log(
                         (it, b_it, epoch, error, eta, error_val))
-                else:                    
-                    insert_iteration_log((it, b_it, epoch, error, eta))                
+                else:
+                    insert_iteration_log((it, b_it, epoch, error, eta))
+                last_error = error
+                error = 1.0
 
         if X_val is not None:
             print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
-                    (it, b_it, epoch, error, eta, error_val))            
+                  (it, b_it, epoch, last_error, eta, error_val))
             insert_iteration_log(
-                (it, b_it, epoch, error, eta, error_val))
+                (it, b_it, epoch, last_error, eta, error_val))
         else:
             print("Finished \n It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f " %
-                    (it, b_it, epoch, error, eta))                     
-            insert_iteration_log((it, b_it, epoch, error, eta))
-        
-
-
+                  (it, b_it, epoch, last_error, eta))
+            insert_iteration_log((it, b_it, epoch, last_error, eta))
