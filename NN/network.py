@@ -82,7 +82,7 @@ class Layer:
         dprint(('out', self.out))
         return self.net, self.out
 
-    def backpropagate(self, lr=0.5, output_layer=None, dETotal_dOut=None):
+    def backpropagate(self, lr=0.5, update=True, output_layer=None, dETotal_dOut=None):
 
         if output_layer is None:
             self.error = dETotal_dOut
@@ -91,9 +91,15 @@ class Layer:
 
         self.delta = self.error * self.act_derivative(self.out)
 
-        self.weights -= lr * self.input.T.dot(self.delta)
+        self.grad = self.input.T.dot(self.delta)
+        
+        if update: 
+            self.weights -= lr * self.grad
 
         dprint(('dETotal_dOut', dETotal_dOut))
+
+        return self.grad
+        
 
 
 class NN:
@@ -143,7 +149,14 @@ class NN:
         l_idx = l_sz - 1
         layer = self.layers[l_idx]
         dE_dW = self.loss_derivative(layer.out, Y)
-        layer.backpropagate(dETotal_dOut=dE_dW, lr=lr)
+        
+        ninstances = Y.shape[0]
+
+        single_update = (ninstances == 1)
+
+        layer.backpropagate(dETotal_dOut=dE_dW, lr=lr, update=single_update)
+
+        grads = []
 
         while l_idx > 0:
             l_idx -= 1
@@ -151,7 +164,15 @@ class NN:
             dprint("============================")
             dprint(layer.label)
             dprint("============================")
-            layer.backpropagate(output_layer=self.layers[l_idx+1])
+            g = layer.backpropagate(output_layer=self.layers[l_idx+1]).sum(axis=-1)            
+            grads.append(g)
+
+
+        if not single_update: 
+            while l_idx > 0:
+                l_idx -= 1
+                layer = self.layers[l_idx]
+                layer.weights -= lr * grads[l_idx]
 
     def fit(self, X, Y, lr=0.5,
             max_iter=1000, lr_optimizer=None,
@@ -177,8 +198,8 @@ class NN:
         global __iteration_log
         __iteration_log = []
         error_val = 0.
-
-        while ((error > epsilon) and (it < max_iter)):
+        _error = 999999
+        while ((_error > epsilon) and (it < max_iter)):
             if (it % print_interval) == 0 or it == 1:
                 error = .0
             if decay_iteractions is not None:
@@ -205,15 +226,20 @@ class NN:
             # print(X_.shape)
 
             _, aY = self.feed_forward(X_)
+                        
+            _error = self.loss(aY, Y_) / Y_.shape[0]
 
-            error += self.loss(aY, Y_) / Y_.shape[0]
+            error += _error
 
             self.backpropagate(Y_, eta)
+
+            if  _error < epsilon: 
+                last_error = _error / Y_.shape[0]
 
             it += 1
             t += 1
 
-            if (it % print_interval) == 0:
+            if (it % print_interval) == 0 and it > 1:
 
                 error /= print_interval
 
@@ -234,6 +260,7 @@ class NN:
                         (it, b_it, epoch, error, eta, error_val))
                 else:
                     insert_iteration_log((it, b_it, epoch, error, eta))
+
                 last_error = error
                 error = 1.0
 

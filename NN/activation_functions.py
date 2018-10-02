@@ -38,6 +38,7 @@ def sigmoid_derivative_chain(output):
 # dot product of X (input) and theta (weights)
 #
 def tanh(h):
+    h[h<=0] = np.finfo(np.float128).eps
     return (2 / (1+np.exp(-2*h)))-1
 
 #
@@ -46,10 +47,12 @@ def tanh(h):
 # back propagation algorithm.
 #
 def tanh_derivative(h):
+    h[h<=0] = np.finfo(np.float128).eps
     tanh_l = (4*np.exp(-2*h))/((1+np.exp(-2*h))**2)
     return tanh_l
 
 def tanh_derivative_chain(h):    
+    h[h<=0] = np.finfo(np.float128).eps
     return (4*np.exp(-2*h))/((1+np.exp(-2*h))**2)
 
 
