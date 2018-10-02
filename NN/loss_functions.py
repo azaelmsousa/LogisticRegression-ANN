@@ -19,26 +19,26 @@ def softmax(y):
 # It computes the error of the predicted
 # class and the correct one.
 #
-def cross_entropy(A, Y):
-    A = softmax(A)
+def cross_entropy(A, Y):    
+    O = softmax(A)
     eps = np.finfo(np.float64).eps
-    A[A < eps]  = eps
-    A[A > (1-eps)]  = 1-eps
-    return ((-np.log(A) * Y) - (np.log(1-A) * (1-Y))).sum()
+    O[O < eps]  = eps
+    O[O > (1-eps)]  = 1-eps
+    return (-(np.log(O) * Y) - (np.log(1-O) * (1-Y))).sum()
     #( (-np.log(A+eps)*Y) - (np.log(1-A+eps) * (1-Y)) ).sum()  
 #
 # Derivative of the Cross Entropy loss function.
 # It is used in the back propagation
 # algorithm.
 #
-def cross_entropy_derivative(I, A, Y):
-    A = softmax(A)
-    error = (A - Y)
+def cross_entropy_derivative(I, A, Y):    
+    O = softmax(A)
+    error = (O - Y)
     # print(Y.shape, A.shape, error.shape)
     grad = np.dot(I.T, error)    
     return grad
 
-def cross_entropy_derivative_chain(A, Y):
+def cross_entropy_derivative_chain(A, Y):    
     O = softmax(A)
     error = (O - Y)    
     return error

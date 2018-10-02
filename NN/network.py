@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 from NN import activation_functions, loss_functions
 from sklearn.utils import shuffle
-from utils import dataset_helper
+from utils import dataset_helper, custom_scores
 
 DEBUG = False
 
@@ -221,10 +221,10 @@ class NN:
                     y_pred_val = np.array(self.predict(X_val))
                     error_val = np.array(
                         self.loss(y_pred_val, Y_val)) / X_val.shape[0]
-
+                    val_acc = custom_scores.accuracy_score(Y_val.argmax(axis=-1), y_pred_val.argmax(axis=-1), mode='multi')
                 if X_val is not None:
-                    print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f" %
-                          (it, b_it, epoch, error, eta, error_val))
+                    print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f Val Acc %.8f" %
+                          (it, b_it, epoch, error, eta, error_val, val_acc))
                 else:
                     print("It: %s Batch: %s Epoch %i Error: %.8f lr: %.6f " %
                           (it, b_it, epoch, error, eta))

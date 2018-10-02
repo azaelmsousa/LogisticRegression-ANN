@@ -49,10 +49,23 @@ def tanh_derivative(h):
     tanh_l = (4*np.exp(-2*h))/((1+np.exp(-2*h))**2)
     return tanh_l
 
+def tanh_derivative_chain(h):    
+    return (4*np.exp(-2*h))/((1+np.exp(-2*h))**2)
+
+
+def relu(h):        
+    return np.maximum(h, 0)
+
+def relu_derivative_chain(h):
+    v = h.copy()
+    v[v > 0] = 1
+    v[v <= 0] = 0.
+    return  v
+
 #
 # The softmax function transforms a set of weights in to a probability distribution function
 #
 def softmax(y): 
-    exp_y = np.exp(y)       
-    return normalize(exp_y, norm='l1', axis=1)
+    exp_y = np.exp(y - np.max(y))       
+    return exp_y / exp_y.sum()
 
