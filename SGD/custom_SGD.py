@@ -260,7 +260,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     if multinomial:        
         theta = np.zeros([y.shape[1], nparams])
         theta_temp = np.ones([y.shape[1], nparams])
-        print()
+        print(theta.shape)
+        return 0
     else:
         theta = np.zeros(nparams)
         theta_temp = np.ones(nparams)
@@ -302,19 +303,21 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
                     if batch_type == 'Stochastic':
                         X, y = shuffle(X, y)
         
-        if (multinomial):            
-            h0 = softmax(theta, X_)
-            print(h0.shape, y_.shape)
+        if multinomial:            
+            h = softmax(theta, X)
+
+            error = h - y_
+            grad = (np.matmul(error, X_))/nsamples
+            theta_temp = theta - (eta*grad)            
+            y_pred = classify_softmax(theta_temp, X_)
+            
         else:
             h0 = hypothesis(theta, X_)
 
-        error = (h0 - y_)        
-        if (multinomial):
-            theta_temp = grad_logit_step(theta, error.transpose(), y_, eta, X_)
-        else:
+            error = (h0 - y_)                        
             theta_temp = grad_logit_step(theta, X_, y_, eta, error)
+            y_pred = classify(theta_temp, X_)
         
-        y_pred = classify(theta_temp, X_, multinomial_=multinomial)
         
         acc_train = custom_scores.accuracy_score(y_, y_pred)
 
@@ -324,7 +327,10 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         t += 1
 
         if X_val is not None:            
-            y_pred_val = softmax(theta, X_).argmax(axis=-1) #classify(theta, X_val, multinomial_=multinomial)
+            if multinomial: 
+                y_pred_val = classify_softmax(theta, X_val)
+            else: 
+                y_pred_val = classify(theta, X_val)
             acc_val = custom_scores.accuracy_score(y_val, y_pred_val)
 
         if (it % print_interval) == 0 or it == 1:
@@ -340,8 +346,12 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         else:
             __iteration_log.append((it, b_it, epoch, acc_train, eta))
 
-    y_pred = classify(theta, X, multinomial_=multinomial)
-
+    if multinomial: 
+        y_pred = classify_softmax(theta, X)
+    else: 
+        y_pred = classify(theta, X_val)
+    
+    
     acc_train = custom_scores.accuracy_score(y, y_pred)
 
     if X_val is not None:
@@ -397,12 +407,9 @@ def SGD_softmax(lr, max_iter, X, y, lr_optimizer=None,
                 batch_sz=1,
                 print_interval=100,
                 X_val=None,
-                y_val=None):
+                y_val=None, nclasses=10):
 
-    classes = np.unique(y)
-    print(classes)
-    theta = {}
-
+            
     print("==============================================")
     print("Training softmax model")
     print("==============================================")
