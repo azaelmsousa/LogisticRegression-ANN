@@ -21,7 +21,18 @@ from utils import custom_scores, dataset_helper
 __RANDOM_STATE = 42
 __iteration_log = []
 
+# -----------------------------------
+#   Softmax Classify Methods
+# -----------------------------------
 
+
+def classify_softmax(theta, X):
+    X = np.insert(X, 0, 1, axis=1)
+    h = softmax(theta, X)
+    pred = np.argmax(h, axis=0)
+    X = np.delete(X, 0, axis=1)
+    return pred
+    
 def get_iteration_log():
     global __iteration_log
     cols = len(__iteration_log[0])
@@ -124,15 +135,12 @@ def classify(theta, X, th=0.5, binary=True, multinomial_=False):
     """
         Given a threshold apply a binary classification of the samples regarding an optimized theta
     """
-    if ((binary) and (not multinomial_)):
+    if ((binary) and (not multinomial_)):        
         if theta.shape[0] > X.shape[1]:
             X = np.insert(X, 0, 1, axis=1)
         y = hypothesis(theta, X)
         y = np.where(y >= th, 1, 0)
         X = np.delete(X, 0, axis=1)
-    elif multinomial_:
-        X = np.delete(X, 0, axis=1)
-        y = classify_softmax(theta, X)
     else:
         y = classify_multiclass(theta, X)
     return y
@@ -258,8 +266,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     print("Number of parameters: "+str(nparams))
 
     if multinomial:        
-        theta = np.zeros([y.shape[1], nparams])
-        theta_temp = np.ones([y.shape[1], nparams])
+        theta = np.zeros([y.shape[0], nparams])
+        theta_temp = np.ones([y.shape[0], nparams])
         print(theta.shape)
         return 0
     else:
@@ -282,7 +290,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         print('Shuffled')
     global __iteration_log
     __iteration_log = []
-    acc_val = 0.
+    acc_val = 0.    
     while (it < max_iter):
         if lr_optimizer == 'invscaling':
             eta = lr / (it + 1) * pow(t, power_t)
@@ -349,7 +357,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     if multinomial: 
         y_pred = classify_softmax(theta, X)
     else: 
-        y_pred = classify(theta, X_val)
+        y_pred = classify(theta, X)
     
     
     acc_train = custom_scores.accuracy_score(y, y_pred)
@@ -482,7 +490,7 @@ def SGD_toy_test_multiclass():
     X,  X_val, y, y_val = get_toy_data_multiclass()
 
     lr = .001
-    max_iter = 50000
+    max_iter = 100
     batch_sz = 64
     print_interval = 1000
 
