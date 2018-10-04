@@ -250,15 +250,17 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
 
     # Adding theta0 to the feature vector
     X = np.insert(X, values=1, obj=0, axis=1)
+    y = y.transpose()
     shape = X.shape
     nsamples = shape[0]
     print("Number of samples: "+str(nsamples))
     nparams = shape[1]
     print("Number of parameters: "+str(nparams))
 
-    if (multinomial):
-        theta = np.zeros([len(np.unique(y)), nparams])
-        theta_temp = np.ones([len(np.unique(y)), nparams])
+    if multinomial:        
+        theta = np.zeros([y.shape[1], nparams])
+        theta_temp = np.ones([y.shape[1], nparams])
+        print()
     else:
         theta = np.zeros(nparams)
         theta_temp = np.ones(nparams)
@@ -300,11 +302,9 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
                     if batch_type == 'Stochastic':
                         X, y = shuffle(X, y)
         
-        if (multinomial):
-            lb = LabelBinarizer()
-            lb.fit(y_)
-            y_ = (lb.transform(y_)).transpose()
+        if (multinomial):            
             h0 = softmax(theta, X_)
+            print(h0.shape, y_.shape)
         else:
             h0 = hypothesis(theta, X_)
 
@@ -324,7 +324,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         t += 1
 
         if X_val is not None:            
-            y_pred_val = classify(theta, X_val)            
+            y_pred_val = softmax(theta, X_).argmax(axis=-1) #classify(theta, X_val, multinomial_=multinomial)
             acc_val = custom_scores.accuracy_score(y_val, y_pred_val)
 
         if (it % print_interval) == 0 or it == 1:

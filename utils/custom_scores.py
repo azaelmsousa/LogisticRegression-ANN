@@ -105,12 +105,12 @@ def compute_confusion_matrix(y_test, y_pred, class_names=None):
     np.set_printoptions(precision=2)
 
     # Plot non-normalized confusion matrix
-    plt.figure()
+    plt.figure(figsize=(5, 5))
     plot_confusion_matrix(cnf_matrix, classes=class_names,
                         title='Confusion matrix, without normalization')
 
     # Plot normalized confusion matrix
-    plt.figure()
+    plt.figure(figsize=(5, 5))
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
                         title='Normalized confusion matrix')
 
@@ -118,7 +118,7 @@ def compute_confusion_matrix(y_test, y_pred, class_names=None):
 
 
 
-def evalute_multiclass(y_val, y_pred):
+def evaluate_multiclass(y_val, y_pred):
     print("Validation Stats...\nAccuracy: %.3f" %
           accuracy_score(y_val, y_pred, mode='multi'))
     print("Precision: %.3f" %
