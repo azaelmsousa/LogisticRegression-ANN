@@ -15,8 +15,7 @@ from sklearn.datasets import load_breast_cancer, make_regression, make_classific
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from sklearn.preprocessing import LabelBinarizer
-
-from utils import custom_scores
+from utils import custom_scores, dataset_helper
 
 
 __RANDOM_STATE = 42
@@ -114,10 +113,10 @@ def hypothesis(theta, X, stable=False):
     return h
 
 
-def softmax(theta,X):
-    score = np.dot(theta,X.transpose())
+def softmax(theta, X):
+    score = np.dot(theta, X.transpose())
     exp = np.exp(score)
-    h = exp / np.sum(exp,axis=0)
+    h = exp / np.sum(exp, axis=0)
     return h
 
 
@@ -125,16 +124,14 @@ def classify(theta, X, th=0.5, binary=True, multinomial_=False):
     """
         Given a threshold apply a binary classification of the samples regarding an optimized theta
     """
-
     if ((binary) and (not multinomial_)):
         if theta.shape[0] > X.shape[1]:
             X = np.insert(X, 0, 1, axis=1)
         y = hypothesis(theta, X)
-        y[y >= th] = 1
-        y[y < th] = 0
+        y = np.where(y >= th, 1, 0)
         X = np.delete(X, 0, axis=1)
     elif multinomial_:
-        X = np.delete(X,0,axis=1)
+        X = np.delete(X, 0, axis=1)
         y = classify_softmax(theta, X)
     else:
         y = classify_multiclass(theta, X)
@@ -157,12 +154,14 @@ def classify_multiclass(theta, X):
     X = np.delete(X, 0, axis=1)
     return labels
 
-def classify_softmax(theta,X):
-    X = np.insert(X,0,1,axis=1)
-    h = softmax(theta,X)
-    labels = np.argmax(h,axis=1)
-    X = np.delete(X,0,axis=1)
+
+def classify_softmax(theta, X):
+    X = np.insert(X, 0, 1, axis=1)
+    h = softmax(theta, X)
+    labels = np.argmax(h, axis=1)
+    X = np.delete(X, 0, axis=1)
     return labels
+
 
 def cross_entropy_loss(h, y):
     """
@@ -191,7 +190,6 @@ def grad_logit_step_test():
     X, y = get_toy_data()
     X = np.insert(X, 0, 1, axis=1)
 
-    
     alpha = .9
     max_iter = 50
     for i in range(max_iter):
@@ -240,41 +238,6 @@ def get_toy_data_multiclass():
 
     return X_train, X_test, y_train, y_test
 
-def get_data_multiclass(scaling=None):
-    """
-        Returns  X_train, X_test, y_train, y_test the fashion MNIST dataset
-    """
-    
-    base_dir = '../../data/'
-    print(os.listdir(base_dir))
-
-    X_train = pd.read_csv('%s/fashion-mnist_train.csv'%(base_dir))
-    y_train = X_train.pop('label')
-    X_test = pd.read_csv('%s/fashion-mnist_test.csv'%(base_dir))
-    y_test = X_test.pop('label')
-    
-    np_X_train = X_train.values
-    np_y_train = y_train.values
-    np_X_test = X_test.values
-    np_y_test = y_test.values
-    
-    #
-    # Normalizing values
-    #
-    if (scaling=='mean_std'):
-        mean = np.mean(np_X_train,axis=0)
-        std = np.std(np_X_train,axis=0)
-        np_X_train = (np_X_train - mean)/std
-        np_X_test = (np_X_test - mean)/std
-    if (scaling=='min_max'):
-        min_ = np.amin(np_X_train,axis=0)
-        max_ = np.amax(np_X_train,axis=0)
-        np_X_train = (np_X_train - min_)/(max_ - min_)
-        np_X_test = (np_X_test - min_)/(max_ - min_)
-        
-
-    return np_X_train, np_X_test, np_y_train, np_y_test
-
 
 def SGD(lr, max_iter, X, y, lr_optimizer=None,
         power_t=0.25, t=1.0,
@@ -294,8 +257,8 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
     print("Number of parameters: "+str(nparams))
 
     if (multinomial):
-        theta = np.zeros([len(np.unique(y)),nparams])
-        theta_temp = np.ones([len(np.unique(y)),nparams])
+        theta = np.zeros([len(np.unique(y)), nparams])
+        theta_temp = np.ones([len(np.unique(y)), nparams])
     else:
         theta = np.zeros(nparams)
         theta_temp = np.ones(nparams)
@@ -324,32 +287,35 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
             eta = lr
 
         X_ = np.zeros(0)
-        y_ = np.zeros(0)
-        while y_.shape[0] == 0:
-            # Checking if it is a new epoch to shuffle the data.
-            X_, y_, b_it, epoch = get_batch(X, y, b_it, b_sz, epoch)
-            if lst_epoch < epoch:
-                lst_epoch = epoch
-                if batch_type == 'Stochastic':
-                    X, y = shuffle(X, y)
-
+        y_ = np.zeros(0)        
+        if batch_type == 'Full':
+            X_, y_ = (X, y)
+            epoch +=  1
+        else:
+            while y_.shape[0] == 0:
+                # Checking if it is a new epoch to shuffle the data.
+                X_, y_, b_it, epoch = get_batch(X, y, b_it, b_sz, epoch)
+                if lst_epoch < epoch:
+                    lst_epoch = epoch
+                    if batch_type == 'Stochastic':
+                        X, y = shuffle(X, y)
+        
         if (multinomial):
             lb = LabelBinarizer()
             lb.fit(y_)
             y_ = (lb.transform(y_)).transpose()
-            h0 = softmax(theta, X_)            
+            h0 = softmax(theta, X_)
         else:
             h0 = hypothesis(theta, X_)
 
-        error = (h0 - y_)
-
+        error = (h0 - y_)        
         if (multinomial):
             theta_temp = grad_logit_step(theta, error.transpose(), y_, eta, X_)
-        else:   
+        else:
             theta_temp = grad_logit_step(theta, X_, y_, eta, error)
-
+        
         y_pred = classify(theta_temp, X_, multinomial_=multinomial)
-
+        
         acc_train = custom_scores.accuracy_score(y_, y_pred)
 
         theta = theta_temp.copy()
@@ -357,14 +323,14 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         it += 1
         t += 1
 
-        if X_val is not None:
-            y_pred_val = classify(theta, X_val)
+        if X_val is not None:            
+            y_pred_val = classify(theta, X_val)            
             acc_val = custom_scores.accuracy_score(y_val, y_pred_val)
 
         if (it % print_interval) == 0 or it == 1:
             if X_val is not None:
-                print("It: %s Batch: %s Epoch %i Train Acc: %.8f lr: %.8f Val Acc: %.8f" %
-                      (it, b_it, epoch, acc_train, eta, acc_val))
+                print("It: %s Batch: %s Epoch %i Error %0.8f Train Acc: %.8f lr: %.8f Val Acc: %.8f" %
+                      (it, b_it, epoch, error.mean(), acc_train, eta, acc_val))
             else:
                 print("It: %s Batch: %s Epoch %i Train Acc : %.8f lr: %.8f " %
                       (it, b_it, epoch, acc_train, eta))
@@ -374,8 +340,7 @@ def SGD(lr, max_iter, X, y, lr_optimizer=None,
         else:
             __iteration_log.append((it, b_it, epoch, acc_train, eta))
 
-    
-    y_pred = classify(theta, X,multinomial_=multinomial)    
+    y_pred = classify(theta, X, multinomial_=multinomial)
 
     acc_train = custom_scores.accuracy_score(y, y_pred)
 
@@ -425,13 +390,14 @@ def SGD_one_vs_all(lr, max_iter, X, y, lr_optimizer=None,
 
     return theta
 
+
 def SGD_softmax(lr, max_iter, X, y, lr_optimizer=None,
-                   power_t=0.25, t=1.0,
-                   batch_type='Full',
-                   batch_sz=1,
-                   print_interval=100,
-                   X_val=None,
-                   y_val=None):
+                power_t=0.25, t=1.0,
+                batch_type='Full',
+                batch_sz=1,
+                print_interval=100,
+                X_val=None,
+                y_val=None):
 
     classes = np.unique(y)
     print(classes)
@@ -440,14 +406,10 @@ def SGD_softmax(lr, max_iter, X, y, lr_optimizer=None,
     print("==============================================")
     print("Training softmax model")
     print("==============================================")
-    
-    theta[c] = SGD(lr, max_iter, X, y, lr_optimizer,
-                   power_t, t,
-                   batch_type,
-                   batch_sz,
-                   print_interval,
-                   X_val,
-                   y_val, multinomial=True)
+
+    theta = SGD(lr, max_iter, X, y, batch_type='Full',
+                    batch_sz=batch_sz, print_interval=print_interval, 
+                    X_val=X_val, y_val = y_val, multinomial=True)
     print("==============================================")
 
     return theta
@@ -455,7 +417,6 @@ def SGD_softmax(lr, max_iter, X, y, lr_optimizer=None,
 
 def SGD_test_binary():
     X,  X_val, y, y_val = get_toy_data_binary()
-    
 
     lr = .01
     max_iter = 1000
@@ -512,7 +473,7 @@ def evalute_binary(y_val, y_pred):
 
 def SGD_toy_test_multiclass():
     X,  X_val, y, y_val = get_toy_data_multiclass()
-    
+
     lr = .001
     max_iter = 50000
     batch_sz = 64
@@ -521,54 +482,57 @@ def SGD_toy_test_multiclass():
     print("")
     print("Stochastic Mini batch")
     start = time.process_time()
-    theta = SGD_one_vs_all(lr, max_iter, X, y, batch_type='Stochastic', lr_optimizer="invscaling",
+    theta = SGD_one_vs_all(lr, max_iter, X, y, batch_type='Stochastic',
                            batch_sz=batch_sz, print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val, binary=False)
     evalute_multiclass(y_val, y_pred)
-    
+
+
 def SGD_test_multiclass(scaling_type):
-    X,  X_test, y, y_test = get_data_multiclass(scaling=scaling_type)
-    
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=1)
-    
-    lr = .01
+    X, y, _, _ = dataset_helper.load_fasion_mnist()
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=1)
+
+    lr = .0001
     max_iter = 50000
-    batch_sz = 64
     print_interval = 1000
 
     print("")
     print("Stochastic Mini batch")
     print("----------------------------")
-    print("Number of Iterations:",max_iter)
-    print("Learning rate:",lr)
+    print("Number of Iterations:", max_iter)
+    print("Learning rate:", lr)
     print("----------------------------")
     start = time.process_time()
-    theta = SGD_one_vs_all(lr, max_iter, X_train, y_train, batch_type='Stochastic', lr_optimizer="invscaling",
-                           batch_sz=batch_sz, print_interval=print_interval)
+    theta = SGD_one_vs_all(lr, max_iter, X_train, y_train, 
+                           batch_sz=1, print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify(theta, X_val, binary=False)
     evalute_multiclass(y_val, y_pred)
-    
-def SGD_test_multiclass_softmax(scaling_type):
-    X,  X_test, y, y_test = get_data_multiclass(scaling=scaling_type)
-    
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=1)
-    
+
+
+def SGD_test_multiclass_softmax(scaling='default'):
+    X, y, _, _ = dataset_helper.load_fasion_mnist()
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=1)
+
     lr = .01
-    max_iter = 50000
+    max_iter = 50
     batch_sz = 64
-    print_interval = 1000
+    print_interval = 1
 
     print("")
     print("Stochastic Mini batch")
     print("----------------------------")
-    print("Number of Iterations:",max_iter)
-    print("Learning rate:",lr)
+    print("Number of Iterations:", max_iter)
+    print("Learning rate:", lr)
     print("----------------------------")
     start = time.process_time()
-    theta = SGD_softmax(lr, max_iter, X_train, y_train, batch_type='Full', lr_optimizer="invscaling",
-                           batch_sz=batch_sz, print_interval=print_interval)
+    theta = SGD_softmax(lr, max_iter, X_train, y_train, batch_type='Full',
+                        batch_sz=batch_sz, print_interval=print_interval)
     print("Time Spent ", time.process_time() - start)
     y_pred = classify_softmax(theta, X_val)
     evalute_multiclass(y_val, y_pred)

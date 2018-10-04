@@ -3,6 +3,7 @@ from sklearn import ensemble, linear_model, metrics, model_selection
 from sklearn.datasets import load_breast_cancer, make_regression, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
+from . import mnist_reader
 
 __RANDOM_STATE = 42
 
@@ -64,3 +65,27 @@ def get_toy_data():
     y = np.array([1., 0.], dtype='float64')
     X = np.array([[4., 7.], [2., 6.]], dtype='float64')
     return X, y
+
+
+def load_fasion_mnist(base_dir='../data/fashion', scaling='default'):
+    X_train, y_train = mnist_reader.load_mnist(base_dir, kind='train')
+    X_test, y_test = mnist_reader.load_mnist(base_dir, kind='t10k')
+
+    #
+    # Normalizing values
+    #
+    if (scaling == 'default'):
+        X_train = X_train / 255.
+        X_test = X_test / 255.
+    if (scaling == 'mean_std'):
+        mean = np.mean(X_train, axis=0)
+        std = np.std(X_train, axis=0)
+        X_train = (X_train - mean)/std
+        X_test = (X_test - mean)/std
+    if (scaling == 'min_max'):
+        min_ = np.amin(X_train, axis=0)
+        max_ = np.amax(X_train, axis=0)
+        X_train = (X_train - min_)/(max_ - min_)
+        X_test = (X_test - min_)/(max_ - min_)
+
+    return X_train, y_train, X_test, y_test

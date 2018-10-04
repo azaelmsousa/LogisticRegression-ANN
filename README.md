@@ -38,10 +38,10 @@ The main activites to be delivered were stated by our professor as follows:
 3. Considering the following workflow perform the Neural Network trainning over the dataset.
 
    - Implement a 1 hidden layer neural network. (Done using the `ANN_Test` notebook)
-     - Considering pseudo algorithm for the neural network given in the class slides as test set.
-     - Loss functions: cross entropy, sum of squares.
-     - Activation Functions: Tahn, Logistic (sigmoid) and Softmax.
-   - Train with a network with one hidden layer and evaluate with the Training set.
+     - Considering pseudo algorithm for the neural network given in the class slides as test set. (Done using the `ANN_Test` notebook)
+     - Loss functions: cross entropy, sum of squares.  (Done using the `ANN_Test` notebook)
+     - Activation Functions: Tahn, Logistic (sigmoid) and Softmax.  (Done using the `ANN_Test` notebook)
+   - Train with a network with one hidden layer and evaluate with the Training set.  (Done using the `ANN_Test` notebook)
    - Grid search for the network architecture:
      - Number Layer.
      - Number of Neurons per layer.
