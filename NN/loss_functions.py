@@ -1,5 +1,7 @@
 import math
 import os
+import sys
+sys.path.append('../')
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,49 +9,35 @@ import pandas as pd
 import sklearn.datasets as sk_datasets
 import sklearn.metrics as metrics
 from sklearn.model_selection import train_test_split
+import NN.activation_functions as af
 from sklearn.preprocessing import LabelBinarizer, normalize
 
 def softmax(y): 
-    exp_y = np.exp(y)       
-    return normalize(exp_y, norm='l1', axis=1)
+     return af.softmax(y)
 
-#
 # Cross entropy loss function, where h
 # is the activation of the last layer.
 # It computes the error of the predicted
 # class and the correct one.
 #
-def cross_entropy(A, Y):    
-    O = softmax(A)
-    eps = np.finfo(np.float64).eps
-    O[O < eps]  = eps
-    O[O > (1-eps)]  = 1-eps
-    return (-(np.log(O) * Y) - (np.log(1-O) * (1-Y))).sum()
-    #( (-np.log(A+eps)*Y) - (np.log(1-A+eps) * (1-Y)) ).sum()  
-#
-# Derivative of the Cross Entropy loss function.
-# It is used in the back propagation
-# algorithm.
-#
-def cross_entropy_derivative(I, A, Y):    
-    O = softmax(A)
-    error = (O - Y)
-    # print(Y.shape, A.shape, error.shape)
-    grad = np.dot(I.T, error)    
-    return grad
+def cross_entropy(p, y):
+    eps = 1e-15
+    p = np.clip(p, eps, 1 - eps)
+    return - y * np.log(p) - (1 - y) * np.log(1 - p)
 
-def cross_entropy_derivative_chain(A, Y):    
-    O = softmax(A)
-    error = (O - Y)    
-    return error
+
+def cross_entropy_derivative_chain(p, y):            
+    eps = 1e-15
+    p = np.clip(p, eps, 1 - eps)
+    return - (y / p) + (1 - y) / (1 - p)
 #
 # Sum of the squared differences (SMD) loss
 # function, where h is the activation of the
 # last layer. It computes the error of the
 # predicted class and the correct one.
 #
-def smd(A, Y):
-    error = np.square((A - Y)).sum()
+def smd(p, y):
+    error = np.square((p - y))
     return error/2
 
 #
@@ -59,10 +47,6 @@ def smd(A, Y):
 # predicted class and the correct one.
 #
 
-def smd_derivative_chain(A, Y):
-    return -(Y - A)
+def smd_derivative_chain(p, y):
+    return -(y - p)
 
-def smd_derivative(I, A, Y):
-    error = (A - Y)
-    grad = np.dot(I.transpose(), error)
-    return grad

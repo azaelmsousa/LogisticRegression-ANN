@@ -45,21 +45,26 @@ def get_iteration_log():
 
 class Layer:
     def __init__(self, input_sz, neurons, activation, bias=.0, weights=None, label=None):
-        self.activation = activation_functions.__dict__[activation]
         self.input_sz = input_sz
         self.neurons = neurons
         self.label = label
-        self.bias = bias
+
         self.model = None
-        if activation != 'softmax':
-            self.act_derivative = activation_functions.__dict__[
-                activation+"_derivative_chain"]
-            if weights is not None:
-                self.weights = weights
-            else:
-                self.weights = np.random.rand(input_sz, neurons)
+
+        self.activation = activation_functions.__dict__[activation]
+
+        self.act_derivative = activation_functions.__dict__[
+            activation+"_derivative_chain"]
+
+        if weights is not None:
+            self.weights = weights
         else:
-            self.weights = np.ones((input_sz, neurons))
+            self.weights = np.random.uniform(-1.0/math.sqrt(neurons), 1.0/math.sqrt(neurons),
+                                             (input_sz, neurons))
+
+        self.bias = np.zeros((1, neurons))
+        if bias != .0:
+            self.bias = bias
 
     def set_model(self, model):
         self.model = model
@@ -70,45 +75,50 @@ class Layer:
 
     def feed_forward(self, input_values):
 
-        if self.activation.__name__ != 'softmax':            
-            self.net = np.dot(input_values, self.weights) + self.bias
-        else:
-            self.net = input_values.copy()
-
         self.input = input_values
+        self.net = input_values.dot(self.weights) + self.bias
         self.out = self.activation(self.net)
-
-        dprint(('net', self.net))
-        dprint(('out', self.out))
         return self.net, self.out
 
-    def backpropagate(self, lr=0.5, update=True, output_layer=None, dETotal_dOut=None):
+    def backpropagate(self, last_layer=None, output=False, loss_gradient=None, lr=.5):
+        if output:
+            # print(loss_gradient.mean())
+            self.delta = loss_gradient * \
+                self.act_derivative(self.net)
+            self.grad_w = self.input.T.dot(self.delta)
+            self.grad_bias = np.sum(self.delta, axis=0, keepdims=True)
+            # print(self.label, 
+            #     'delta', self.grad_w.mean(), 
+            #     'grad', self.delta.mean(), 
+            #     'act ', self.act_derivative(self.net).mean(),
+            #     'net ', self.net.mean()
+            #     )
 
-        if output_layer is None:
-            self.error = dETotal_dOut
         else:
-            self.error = output_layer.delta.dot(output_layer.weights.T)
+            self.delta = last_layer.delta.dot(
+                last_layer.weights.T) * self.act_derivative(self.net)
+            self.grad_w = self.input.T.dot(self.delta)
+            self.grad_bias = np.sum(self.delta, axis=0, keepdims=True)
+            # print(self.label, 
+            #     'delta', self.grad_w.mean(), 
+            #     'grad', self.delta.mean(), 
+            #     'act ', self.act_derivative(self.net).mean(),
+            #     'net ', self.net.mean()
+            #     )
 
-        self.delta = self.error * self.act_derivative(self.out)
-
-        self.grad = self.input.T.dot(self.delta)
-        
-        if update: 
-            self.weights -= lr * self.grad
-
-        dprint(('dETotal_dOut', dETotal_dOut))
-
-        return self.grad
-        
+    def update(self, lr=0.5):
+        # print(self.label, self.weights.shape, self.grad_w.shape)
+        self.weights -= lr * self.grad_w
+        self.bias -= lr * self.grad_bias
+        return 0
 
 
 class NN:
-    def __init__(self, loss, lr=0.01):
-        self.clear_layers()
-        self.lr = lr
+    def __init__(self, loss):
+        self.clear_layers()        
         self.loss = loss_functions.__dict__[loss]
         self.loss_derivative = loss_functions.__dict__[
-            loss+"_derivative_chain"]
+             loss+"_derivative_chain"]
 
     def clear_layers(self):
         self.layers = []
@@ -134,50 +144,45 @@ class NN:
     def feed_forward(self, X):
         input_values = X
         for layer in self.layers:
-            net, out = layer.feed_forward(input_values)
-            input_values = out
+            layer.feed_forward(input_values)
+            input_values = layer.out
 
-        return net, out
+        last_layer = self.layers[-1]
+        return last_layer.net, last_layer.out
 
     def predict(self, X):
-        result = [self.feed_forward(X[i:i+1, :])[1].flatten()
-                  for i in range(X.shape[0])]
-        return result
+        input_values = X.copy()
+        for layer in self.layers:
+            hidden_input = input_values.dot(layer.weights) + layer.bias
+            hidden_output = layer.activation(hidden_input)
+            input_values = hidden_output
+        return activation_functions.softmax(hidden_input)
 
-    def backpropagate(self, Y, lr=.5):
+    def backpropagate(self, Y, y_pred,lr=.5):
         l_sz = len(self.layers)
         l_idx = l_sz - 1
         layer = self.layers[l_idx]
-        dE_dW = self.loss_derivative(layer.out, Y)
-        
-        ninstances = Y.shape[0]
 
-        single_update = (ninstances == 1)
+        loss_derivative = self.loss_derivative(p=y_pred, y=Y)
 
-        layer.backpropagate(dETotal_dOut=dE_dW, lr=lr, update=single_update)
-
-        grads = []
-
-        while l_idx > 0:
+        layer.backpropagate(last_layer=None, output=True,
+                            loss_gradient=loss_derivative, lr=lr)
+        while (l_idx > 0):
             l_idx -= 1
             layer = self.layers[l_idx]
-            dprint("============================")
-            dprint(layer.label)
-            dprint("============================")
-            g = layer.backpropagate(output_layer=self.layers[l_idx+1]).sum(axis=-1)            
-            grads.append(g)
+            last_layer = self.layers[l_idx+1]
+            layer.backpropagate(last_layer=last_layer, output=False,
+                                loss_gradient=None, lr=lr)
+            # print(layer.label, layer.grad_w.mean())
 
-
-        if not single_update: 
-            while l_idx > 0:
-                l_idx -= 1
-                layer = self.layers[l_idx]
-                layer.weights -= lr * grads[l_idx]
+        for layer in self.layers:
+            # print(layer.label, layer.grad_w.mean())
+            layer.update(lr=lr)
 
     def fit(self, X, Y, lr=0.5,
             max_iter=1000, lr_optimizer=None,
             epsilon=0.001, power_t=0.25, t=1.0,
-            print_interval=100, b_sz = 1,
+            print_interval=100, b_sz=1,
             decay_iteractions=None, decay_rate=None,
             X_val=None,
             Y_val=None):
@@ -185,12 +190,10 @@ class NN:
         error = 1
         it = 0
         epoch = 0
-        lst_epoch = 0
+        
         b_it = 0
 
         self.lr = lr
-
-        
 
         X, Y = shuffle(X, Y)
         print('Shuffled')
@@ -199,7 +202,9 @@ class NN:
         __iteration_log = []
         error_val = 0.
         _error = 999999
-        while ((_error > epsilon) and (it < max_iter)):
+        lst_epoch = 0.
+        last_error = 0.
+        while ( error > epsilon) and (it < max_iter):
             if (it % print_interval) == 0 or it == 1:
                 error = .0
             if decay_iteractions is not None:
@@ -220,21 +225,26 @@ class NN:
                 if lst_epoch < epoch:
                     lst_epoch = epoch
                     X, Y = shuffle(X, Y)
-
+            # X_, Y_ = X, Y
             # Only exits the loop when there is data for the batch
 
             # print(X_.shape)
 
             _, aY = self.feed_forward(X_)
-                        
-            _error = self.loss(aY, Y_) / Y_.shape[0]
+
+            _error = self.loss(aY, Y_).mean()
+
+            # print(aY - )
+            # print('derivative',
+            #       loss_functions.cross_entropy_derivative_chain(self.layers[-1].out, Y_).mean())
+            # print('derivative', self.loss_derivative(Y_, aY).mean())
 
             error += _error
 
-            self.backpropagate(Y_, eta)
+            self.backpropagate(Y=Y_, y_pred=aY,lr=eta)
 
-            if  _error < epsilon: 
-                last_error = _error / Y_.shape[0]
+            if _error < epsilon:
+                last_error = _error 
 
             it += 1
             t += 1
@@ -245,9 +255,9 @@ class NN:
 
                 if X_val is not None:
                     y_pred_val = np.array(self.predict(X_val))
-                    error_val = np.array(
-                        self.loss(y_pred_val, Y_val)) / X_val.shape[0]
-                    val_acc = custom_scores.accuracy_score(Y_val.argmax(axis=-1), y_pred_val.argmax(axis=-1), mode='multi')
+                    error_val = self.loss(y_pred_val, Y_val).mean()
+                    val_acc = custom_scores.accuracy_score(Y_val.argmax(
+                        axis=-1), y_pred_val.argmax(axis=-1), mode='multi')
                 if X_val is not None:
                     print("It: %s Batch: %s Epoch %i Train Loss: %.8f lr: %.6f Val Loss: %.8f Val Acc %.8f" %
                           (it, b_it, epoch, error, eta, error_val, val_acc))
