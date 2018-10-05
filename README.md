@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Using fashion-mnist as dataset we are supposed to implement from scracth an Artificial Neural Network with an experimental protocol pre-defined.
+Using Logistic Regression and Artificial Neural Networks, we aim to classify clothes in the fasion-MNIST dataset. All models and optimization methods employed in this project were implemented from scratch.
 
 The main activites to be delivered were stated by our professor as follows:
 
@@ -20,8 +20,86 @@ The main activites to be delivered were stated by our professor as follows:
 - `NN` Module containing the Neural Network implementation alongside with its helpers.
 - `data` Directory containing the target dataset `Fasion Mnist`.
 - `notebooks` The experiments and tests for the code are all builtin upon using jupyter notebooks in this directory.
-- `SGD` This module has the implementation of the Logistic Regresion and the Multinomial Logistic Regression as asked.
+- `SGD` This module has the implementation of the Logistic Regresion and the Multinomial Logistic Regression.
 - `helper` In the module there helper functions to read the mnist data format, work with datasets and evaluate the algorithms.
+
+## Requirements
+
+`$ pip install -r requirements.txt --user`
+
+* backcall==0.1.0
+* cycler==0.10.0
+* decorator==4.3.0
+* ipykernel==4.9.0
+* ipython==6.5.0
+* ipython-genutils==0.2.0
+* jedi==0.12.1
+* jupyter-client==5.2.3
+* jupyter-core==4.4.0
+* kiwisolver==1.0.1
+* matplotlib==2.2.3
+* numpy==1.15.1
+* pandas==0.23.4
+* parso==0.3.1
+* pexpect==4.6.0
+* pickleshare==0.7.4
+* prompt-toolkit==1.0.15
+* ptyprocess==0.6.0
+* pycurl==7.43.0
+* Pygments==2.2.0
+* pygobject==3.20.0
+* pyparsing==2.2.0
+* python-apt==1.1.0b1
+* python-dateutil==2.7.3
+* pytz==2018.5
+* pyzmq==17.1.2
+* scikit-learn==0.19.2
+* scipy==1.1.0
+* simplegeneric==0.8.1
+* six==1.11.0
+* sklearn==0.0
+* tornado==5.1
+* traitlets==4.3.2
+* wcwidth==0.1.7
+
+## Experiments
+
+### Logistic Regression
+
+1) Compute the best hyperparameters (learning rate and number of iterations) using a K-Fold Cross Validation Grid Search, with k = 5.
+2) Divide the Training set into Train and Validation using a constant random state (42) for future comparison.
+3) Train the model and test is with the Validation set.
+
+### Multinomial Logistic Regression
+
+The experiments for this method is really similar to the previous one.
+
+1) Compute the best hyperparameters (learning rate and number of iterations) using a K-Fold Cross Validation Grid Search, with k = 5.
+2) Divide the Training set into Train and Validation using a constant random state (42) for future comparison.
+3) Train the model and test is with the Validation set.
+
+### ANN
+
+1) ANN with 1 layer:
+ * Change the loss function between sigmoid and ReLU
+ * Test both of them with 2 different number of neurons
+
+2) ANN with 2 layer:
+ * Change the loss function between sigmoid and ReLU
+ * Test both of them with different number of neurons in both layers
+
+### Final Experiment
+
+The final experiment is done by selecting the model who performed best in the validation set. Then, this model is used in the test set. 
+
+## Reproduction
+
+To reproduce the results reported, run the following notebooks:
+
+ * `Experiments - Round 1.ipynb` This notebook runs the Logistic Regression with the best hyperparameters defined at `Experiments - Round 1.1.ipynb`. Since the computation of the hyperparameters take a long time, we will not list it here to be executed, but it can be if the professor so desire.
+ * `Experiments - Round 2.ipynb` This notebook runs the Multinomial Logistic Regression with the best hyperparameters defined at `Experiments - Round 2.1.ipynb`. The same restriction of the previous notebbok applies here.
+ 
+ * `Neural Network Experiments - Round 1.ipynb`
 
 ## Planning
 

@@ -113,7 +113,7 @@ def FbScore(Y, predY, beta, mode='binary'):
 # -----------------------------------
 
 
-def BGD(X, y, alpha, iterations):
+def BGD(X, y, lr, max_iter, print_interval):
 
     X = np.insert(X, 0, 1, axis=1)
 
@@ -124,13 +124,13 @@ def BGD(X, y, alpha, iterations):
     nsamples = X.shape[0]
     nfeatures = X.shape[1]
 
-    print(nsamples)
-    print(nfeatures)
+    print("Samples:", nsamples)
+    print("Features:",nfeatures)
 
     theta = np.zeros([len(np.unique(y)), nfeatures])
     J = []
 
-    for i in range(iterations):
+    for i in range(max_iter):
 
         h = softmax(theta, X)
 
@@ -138,17 +138,18 @@ def BGD(X, y, alpha, iterations):
 
         grad = (np.matmul(error, X))/nsamples
 
-        theta = theta - (alpha*grad)
+        theta = theta - (lr*grad)
 
         J.append(Cost(theta, X, y_enc))
 
-        print("Iteration:", i, "Cost=", Cost(theta, X, y_enc))
+        if (not(i % print_interval)):
+            print("Iteration:", i, "Cost=", Cost(theta, X, y_enc))
 
     X = np.delete(X, 0, axis=1)
 
     plt.plot(J)
     plt.ylabel('Error')
-    plt.xlabel('iterations')
+    plt.xlabel('max_iter')
     plt.show()
 
-    return theta, J[iterations-1]
+    return theta, J[max_iter-1]
