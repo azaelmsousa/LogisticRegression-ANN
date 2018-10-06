@@ -82,11 +82,17 @@ The experiments for this method is really similar to the previous one.
 
 1) ANN with 1 layer:
  * Change the loss function between sigmoid and ReLU
- * Test both of them with 2 different number of neurons
+ * Test 2 number of neurons for each of them:
+      * 256 neurons for layer 1
+      * 128 neurons for layer 1
 
 2) ANN with 2 layer:
  * Change the loss function between sigmoid and ReLU
- * Test both of them with different number of neurons in both layers
+ * Test 2 number of neurons for them:
+      * 256 neurons at each layer
+      * 128 neurons at each layer
+
+The number of neurons were chosen as powers of 2 and less, but close, then the number of features.
 
 ### Final Experiment
 
