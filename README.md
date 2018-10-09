@@ -195,7 +195,8 @@ soft    (input=128, neurons=10, activation=softmax)
 Model Summary
 -------------------------------
 H1      (input=784, neurons=512, activation=relu)
-soft    (input=512, neurons=10, activation=softmax)
+H3      (input=512, neurons=100, activation=relu)
+soft    (input=100, neurons=10, activation=softmax)
 -------------------------------
 
 Model Summary
