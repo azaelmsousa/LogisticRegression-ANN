@@ -102,8 +102,9 @@ The final experiment is done by selecting the model who performed best in the va
 
 To reproduce the results reported, run the following notebooks:
 
- * `Experiments - Round 1.ipynb` This notebook runs the Logistic Regression with the best hyperparameters defined at `Experiments - Round 1.1.ipynb`. Since the computation of the hyperparameters take a long time, we will not list it here to be executed, but it can be if the professor so desire.
- * `Experiments - Round 2.ipynb` This notebook runs the Multinomial Logistic Regression with the best hyperparameters defined at `Experiments - Round 2.1.ipynb`. The same restriction of the previous notebbok applies here.
+ * `EDA - Fashion Mnist.ipynb` This notebook contains the Exploratory Data Analisys, where the projection method t-SNE was applied over the dataset in order to give us a better understanding about the samples.
+ * `Experiments - Round 1.ipynb` This notebook runs the Logistic Regression with the best hyperparameters defined at `CV - Round 1.ipynb`. Since the computation of the hyperparameters take a long time, we will not list it here to be executed, but it can be if the professor so desire.
+ * `Experiments - Round 2.ipynb` This notebook runs the Multinomial Logistic Regression with the best hyperparameters defined at `CV - Round 2.ipynb`. The same restriction of the previous notebbok applies here.
  
  * `Neural Network Experiments - Round 1.ipynb`
 

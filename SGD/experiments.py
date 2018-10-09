@@ -163,6 +163,6 @@ def crossValidation(X_train,y_train,nfolds,params,classifier='one_vs_all'):
     print("------ Final Scores!")	
     for i in params:
         print(i)
-        print(score[i['learning_rate'],i['iterations']])
+        print(score[i['lr'],i['max_iter']])
         
     return score
